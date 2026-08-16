@@ -33,7 +33,7 @@ func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 
-			tokenString := parts[1]
+			tokenString := strings.TrimSpace(parts[1])
 
 			// Validação do token
 			claims, err := token.ValidateToken(tokenString, cfg.JWTSecret)

@@ -8,6 +8,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/domain"
 	"github.com/alisonsandrade/go-start-project/internal/repository"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
+	"github.com/google/uuid"
 )
 
 var (
@@ -18,8 +19,9 @@ var (
 
 type UserService interface {
 	Register(dto domain.CreateUserDTO) (*domain.User, error)
+	UpdateProfile(userID uuid.UUID, dto domain.UpdateUserDTO) (*domain.User, error)
 	Login(dto domain.LoginDTO) (*domain.AuthResponseDTO, error)
-	GetProfile(userID uint) (*domain.User, error)
+	GetProfile(userID uuid.UUID) (*domain.User, error)
 	ListUsers() ([]domain.User, error)
 }
 
@@ -72,6 +74,39 @@ func (s *userService) Register(dto domain.CreateUserDTO) (*domain.User, error) {
 	return user, nil
 }
 
+func (s *userService) UpdateProfile(userID uuid.UUID, dto domain.UpdateUserDTO) (*domain.User, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	// Validação dos campos que serão alterados
+	if dto.Name != "" {
+		user.Name = dto.Name
+	}
+	if dto.Phone != "" {
+		user.Phone = dto.Phone
+	}
+	if dto.AvatarURL != "" {
+		user.AvatarURL = dto.AvatarURL
+	}
+	if dto.JobTitle != "" {
+		user.JobTitle = dto.JobTitle
+	}
+	if dto.Bio != "" {
+		user.Bio = dto.Bio
+	}
+
+	if err := s.userRepo.Update(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
 func (s *userService) Login(dto domain.LoginDTO) (*domain.AuthResponseDTO, error) {
 	user, err := s.userRepo.FindByEmail(dto.Email)
 	if err != nil {
@@ -105,7 +140,7 @@ func (s *userService) Login(dto domain.LoginDTO) (*domain.AuthResponseDTO, error
 	}, nil
 }
 
-func (s *userService) GetProfile(userID uint) (*domain.User, error) {
+func (s *userService) GetProfile(userID uuid.UUID) (*domain.User, error) {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, err

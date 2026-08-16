@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/http"
 
+	_ "github.com/alisonsandrade/go-start-project/docs"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -55,6 +58,11 @@ func New() (*App, error) {
 	r.Route("/api", func(api chi.Router) {
 		api.Mount("/users", userHandler.Routes(cfg))
 	})
+
+	// Documentação Swagger
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("http://localhost:8000/swagger/doc.json"),
+	))
 
 	return &App{
 		Config: cfg,
