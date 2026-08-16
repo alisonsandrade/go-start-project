@@ -1,0 +1,260 @@
+definitions:
+  domain.AuthResponseDTO:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/domain.User'
+    type: object
+  domain.CreateUserDTO:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      email:
+        type: string
+      job_title:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/domain.Role'
+    type: object
+  domain.ErrorResponseDTO:
+    properties:
+      error:
+        example: Messagem explicativa do error
+        type: string
+    type: object
+  domain.LoginDTO:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  domain.Role:
+    enum:
+    - ADMIN
+    - USER
+    type: string
+    x-enum-varnames:
+    - RoleAdmim
+    - RoleUser
+  domain.UpdateUserDTO:
+    properties:
+      avatar_url:
+        example: https://github.com/alisonsandrade/avatar.jpg
+        type: string
+      bio:
+        example: Desenvolvedor Backend Go
+        type: string
+      job_title:
+        example: Tech Lead
+        type: string
+      name:
+        example: Alison Andrade
+        type: string
+      phone:
+        example: "7599999999"
+        type: string
+    type: object
+  domain.User:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      job_title:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/domain.Role'
+      updated_at:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API do projeto Go Start.
+  title: Go Start API
+  version: "1.0"
+paths:
+  /api/users:
+    get:
+      description: Retorna lista de todos os usuários cadastrados. Acesso restrito
+        a ADMIN.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.User'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      security:
+      - BearerAuth: []
+      summary: Listar todos os usuários (RBAC - ADMIN)
+      tags:
+      - Admin
+  /api/users/login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica credenciais e retorna o token JWT
+      parameters:
+      - description: Credenciais de login
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.LoginDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.AuthResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      summary: Autenticação de usuário
+      tags:
+      - Auth
+  /api/users/me:
+    get:
+      description: Retorna os detalhes do usuário logado via Bearer JWT
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      security:
+      - BearerAuth: []
+      summary: Obter perfil do usuário autenticado
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Atualiza dados cadastrais do próprio usuário autenticado
+      parameters:
+      - description: Campos para atualização
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateUserDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      security:
+      - BearerAuth: []
+      summary: Atualizar perfil do usuário logado
+      tags:
+      - Users
+  /api/users/register:
+    post:
+      consumes:
+      - application/json
+      description: Cadastra um novo usuário padrão no sistema
+      parameters:
+      - description: Dados do usuário
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateUserDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      summary: Cadastro público de usuário (Role USER)
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    description: Digite "Bearer" seguido de um espaço e o seu token JWT.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
