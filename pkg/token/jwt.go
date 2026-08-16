@@ -5,16 +5,17 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type CustomClaims struct {
-	UserID uint   `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	UserID uuid.UUID `json:"user_id"`
+	Email  string    `json:"email"`
+	Role   string    `json:"role"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID uint, email, role, secretKey string, expHours int) (string, error) {
+func GenerateToken(userID uuid.UUID, email, role, secretKey string, expHours int) (string, error) {
 	claims := CustomClaims{
 		UserID: userID,
 		Email:  email,

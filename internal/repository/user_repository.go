@@ -4,13 +4,15 @@ import (
 	"errors"
 
 	"github.com/alisonsandrade/go-start-project/internal/domain"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type UserRepository interface {
 	Create(user *domain.User) error
+	Update(user *domain.User) error
 	FindByEmail(email string) (*domain.User, error)
-	FindByID(ui uint) (*domain.User, error)
+	FindByID(ui uuid.UUID) (*domain.User, error)
 	ListAll() ([]domain.User, error)
 }
 
@@ -26,6 +28,10 @@ func (r *userRepository) Create(user *domain.User) error {
 	return r.db.Create(user).Error
 }
 
+func (r *userRepository) Update(user *domain.User) error {
+	return r.db.Save(user).Error
+}
+
 func (r *userRepository) FindByEmail(email string) (*domain.User, error) {
 	var user domain.User
 
@@ -39,7 +45,7 @@ func (r *userRepository) FindByEmail(email string) (*domain.User, error) {
 	return &user, nil
 }
 
-func (r *userRepository) FindByID(id uint) (*domain.User, error) {
+func (r *userRepository) FindByID(id uuid.UUID) (*domain.User, error) {
 	var user domain.User
 	err := r.db.First(&user, id).Error
 	if err != nil {

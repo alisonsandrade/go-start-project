@@ -1,28 +1,24 @@
 package repository
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/alisonsandrade/go-start-project/internal/config"
-	"github.com/alisonsandrade/go-start-project/internal/domain"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
-	dsn := cfg.GetDSN()
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort, cfg.DBSSLMode)
 
-	// Open connection with database
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("falha ao conectar no banco de dados: %w", err)
 	}
 
-	err = db.AutoMigrate(&domain.User{})
-	if err != nil {
-		return nil, err
-	}
+	log.Println("✅ Conexão com PostgreSQL estabelecida com sucesso!")
 
-	log.Println("Conexão com PostgreSQL estabelecida e migrações aplicadas!")
 	return db, nil
 }
