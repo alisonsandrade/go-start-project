@@ -1,0 +1,24 @@
+# Binários compilados
+/api
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Variáveis de ambiente sensíveis
+.env
+.env.local
+
+# Dependências e caches de IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# Dados locais do Docker
+pgdata/
+
+# Arquivos de teste e cobertura
+*.out
+coverage.txt

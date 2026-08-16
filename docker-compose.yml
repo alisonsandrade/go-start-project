@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gostart_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gostartdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    container_name: gostart_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      DB_HOST: "postgres" # Nome do serviço no docker
+      DB_PORT: "5432"
+      DB_USER: "postgres"
+      DB_PASSWORD: "postgres"
+      DB_NAME: "gostartdb"
+      DB_SSLMODE: "disable"
+      JWT_SECRET: "supersecretkey1234567890"
+      JWT_EXPIRATION_HOURS: "24"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
