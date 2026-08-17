@@ -1,3 +1,4 @@
+// Package domain define as entidades de negócio e DTOs.
 package domain
 
 import (
@@ -11,7 +12,7 @@ import (
 type Role string
 
 const (
-	RoleAdmim Role = "ADMIN"
+	RoleAdmin Role = "ADMIN"
 	RoleUser  Role = "USER"
 )
 
@@ -83,11 +84,6 @@ type UpdateUserDTO struct {
 type LoginDTO struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-}
-
-type AuthResponseDTO struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
 }
 
 type MessageResponseDTO struct {

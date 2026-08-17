@@ -51,11 +51,13 @@ func New() (*App, error) {
 
 	// 4. Instanciação e Fiação dos Módulos
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo, cfg)
+	tokenRepo := repository.NewTokenRepository(db)
+	userService := service.NewUserService(userRepo, tokenRepo, cfg)
 	userHandler := handler.NewUserHandler(userService)
 
 	// 5. Registro de Rotas por Domínio
 	r.Route("/api", func(api chi.Router) {
+		api.Mount("/auth", userHandler.AuthRoutes())
 		api.Mount("/users", userHandler.Routes(cfg))
 	})
 

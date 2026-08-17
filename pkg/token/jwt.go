@@ -1,6 +1,9 @@
+// Package token fornece utilitários para geração, assinatura e validação de tokens de autenticação.
 package token
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -51,4 +54,12 @@ func ValidateToken(tokenString, secretKey string) (*CustomClaims, error) {
 	}
 
 	return nil, errors.New("token inválido ou expirado")
+}
+
+func GenerateSecureToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }

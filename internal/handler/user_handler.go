@@ -1,3 +1,4 @@
+// Package handler prover a orquestração entre as rotas e os serviços.
 package handler
 
 import (
@@ -42,7 +43,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userService.Register(dto)
 	if err != nil {
-		if errors.Is(err, service.ErrEmailAlreadyExists) {
+		if errors.Is(err, service.ErrEmailAlreadyExists) || errors.Is(err, service.ErrInvalidRole) {
 			ErrorJSON(w, http.StatusConflict, err.Error())
 			return
 		}
@@ -64,7 +65,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Failure      400  {object}  domain.ErrorResponseDTO
 // @Failure      401  {object}  domain.ErrorResponseDTO
 // @Failure      500  {object}  domain.ErrorResponseDTO
-// @Router       /api/users/login [post]
+// @Router       /api/auth/login [post]
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var dto domain.LoginDTO
 
@@ -169,26 +170,93 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, user)
 }
 
-// Routes é a função de modularização do roteamento do user_handler
+// DeleteProfile desativa/exclui logicamente a conta do usuário autenticado.
+// @Summary      Deletar perfil do usuário logado (Soft Delete)
+// @Description  Realiza a exclusão lógica do usuário autenticado no sistema
+// @Tags         Users
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  domain.MessageResponseDTO
+// @Failure      401  {object}  domain.ErrorResponseDTO
+// @Failure      404  {object}  domain.ErrorResponseDTO
+// @Failure      500  {object}  domain.ErrorResponseDTO
+// @Router       /api/users/me [delete]
+func (h *UserHandler) DeleteProfile(w http.ResponseWriter, r *http.Request) {
+	claims := r.Context().Value(middleware.UserClaimsKey).(*token.CustomClaims)
+
+	err := h.userService.DeleteUser(claims.UserID)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			ErrorJSON(w, http.StatusNotFound, err.Error())
+			return
+		}
+		ErrorJSON(w, http.StatusInternalServerError, "erro interno ao deletar usuário")
+		return
+	}
+
+	JSON(w, http.StatusOK, domain.MessageResponseDTO{
+		Message: "Usuário desativado com sucesso",
+	})
+}
+
+// RefreshToken renova a sessão do usuário usando um Refresh Token válido.
+// @Summary      Renovar sessão (Tokens)
+// @Description  Recebe o Refresh Token atual e devolve um novo par de tokens (Access e Refresh), rotacionando a sessão
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body domain.RefreshTokenDTO true "Refresh Token"
+// @Success      200  {object}  domain.AuthResponseDTO
+// @Failure      400  {object}  domain.ErrorResponseDTO
+// @Failure      401  {object}  domain.ErrorResponseDTO
+// @Router       /api/auth/refresh [post]
+func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	var dto domain.RefreshTokenDTO
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "payload inválido")
+		return
+	}
+
+	if dto.RefreshToken == "" {
+		ErrorJSON(w, http.StatusBadRequest, "refresh_token é obrigatório")
+		return
+	}
+
+	response, err := h.userService.RefreshSession(dto.RefreshToken)
+	if err != nil {
+		ErrorJSON(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	JSON(w, http.StatusOK, response)
+}
+
+// AuthRoutes para o roteamento das rotas de autorização
+func (h *UserHandler) AuthRoutes() chi.Router {
+	r := chi.NewRouter()
+
+	r.Post("/register", h.Register)
+	r.Post("/login", h.Login)
+	r.Post("/refresh", h.RefreshToken)
+
+	return r
+}
+
+// Routes das rotas do Users
 func (h *UserHandler) Routes(cfg *config.Config) chi.Router {
 	r := chi.NewRouter()
 
-	// Rotas públicas
-	r.Post("/login", h.Login)
-	r.Post("/register", h.Register)
+	// Protege todas as rotas da função com a exigência de token
+	r.Use(middleware.AuthMiddleware(cfg))
 
-	// Rotas protegidas
+	r.Get("/me", h.GetProfile)
+	r.Put("/me", h.UpdateProfile)
+	r.Delete("/me", h.DeleteProfile)
+
+	// Sub-grupo de rotas. Módulo RBAC. Apenas ADMIN
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.AuthMiddleware(cfg))
-
-		r.Get("/me", h.GetProfile)
-		r.Put("/me", h.UpdateProfile)
-
-		// Sub-grupo de rotas. Módulo RBAC. Apenas ADMIN
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.RequireRole(domain.RoleAdmim))
-			r.Get("/", h.ListUsers)
-		})
+		r.Use(middleware.RequireRole(domain.RoleAdmin))
+		r.Get("/", h.ListUsers)
 	})
 
 	return r

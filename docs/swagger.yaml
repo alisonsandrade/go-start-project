@@ -1,7 +1,9 @@
 definitions:
   domain.AuthResponseDTO:
     properties:
-      token:
+      access_token:
+        type: string
+      refresh_token:
         type: string
       user:
         $ref: '#/definitions/domain.User'
@@ -38,13 +40,27 @@ definitions:
       password:
         type: string
     type: object
+  domain.MessageResponseDTO:
+    properties:
+      message:
+        example: Operação realizada com sucesso
+        type: string
+    type: object
+  domain.RefreshTokenDTO:
+    properties:
+      refresh_token:
+        example: dGhpcy1pcy1hLXJlZnJlc2gtdG9rZW4...
+        type: string
+    required:
+    - refresh_token
+    type: object
   domain.Role:
     enum:
     - ADMIN
     - USER
     type: string
     x-enum-varnames:
-    - RoleAdmim
+    - RoleAdmin
     - RoleUser
   domain.UpdateUserDTO:
     properties:
@@ -95,37 +111,7 @@ info:
   title: Go Start API
   version: "1.0"
 paths:
-  /api/users:
-    get:
-      description: Retorna lista de todos os usuários cadastrados. Acesso restrito
-        a ADMIN.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/domain.User'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
-      security:
-      - BearerAuth: []
-      summary: Listar todos os usuários (RBAC - ADMIN)
-      tags:
-      - Admin
-  /api/users/login:
+  /api/auth/login:
     post:
       consumes:
       - application/json
@@ -159,7 +145,94 @@ paths:
       summary: Autenticação de usuário
       tags:
       - Auth
+  /api/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Recebe o Refresh Token atual e devolve um novo par de tokens (Access
+        e Refresh), rotacionando a sessão
+      parameters:
+      - description: Refresh Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.RefreshTokenDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.AuthResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      summary: Renovar sessão (Tokens)
+      tags:
+      - Auth
+  /api/users:
+    get:
+      description: Retorna lista de todos os usuários cadastrados. Acesso restrito
+        a ADMIN.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.User'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      security:
+      - BearerAuth: []
+      summary: Listar todos os usuários (RBAC - ADMIN)
+      tags:
+      - Admin
   /api/users/me:
+    delete:
+      description: Realiza a exclusão lógica do usuário autenticado no sistema
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.MessageResponseDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      security:
+      - BearerAuth: []
+      summary: Deletar perfil do usuário logado (Soft Delete)
+      tags:
+      - Users
     get:
       description: Retorna os detalhes do usuário logado via Bearer JWT
       produces:

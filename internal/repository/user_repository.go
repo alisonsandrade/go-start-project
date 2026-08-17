@@ -11,6 +11,7 @@ import (
 type UserRepository interface {
 	Create(user *domain.User) error
 	Update(user *domain.User) error
+	Delete(ui uuid.UUID) error
 	FindByEmail(email string) (*domain.User, error)
 	FindByID(ui uuid.UUID) (*domain.User, error)
 	ListAll() ([]domain.User, error)
@@ -30,6 +31,23 @@ func (r *userRepository) Create(user *domain.User) error {
 
 func (r *userRepository) Update(user *domain.User) error {
 	return r.db.Save(user).Error
+}
+
+func (r *userRepository) Delete(id uuid.UUID) error {
+	// Inicia uma transação. Se algo falhar, o banco sofre Rollback.
+	tx := r.db.Begin()
+
+	if err := tx.Model(&domain.User{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Delete(&domain.User{}, "id = ?", id).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
 func (r *userRepository) FindByEmail(email string) (*domain.User, error) {
