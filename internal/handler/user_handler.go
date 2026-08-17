@@ -231,6 +231,10 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, response)
 }
 
+/*************************************************************************************************
+*								Modularização dos Roteamentos
+*************************************************************************************************/
+
 // AuthRoutes para o roteamento das rotas de autorização
 func (h *UserHandler) AuthRoutes() chi.Router {
 	r := chi.NewRouter()

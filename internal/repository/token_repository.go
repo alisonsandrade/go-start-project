@@ -1,4 +1,4 @@
-// / Package repository implementa a persistência de dados da aplicação interagindo com o banco./ repository
+// Package repository implementa a persistência de dados da aplicação interagindo com o banco./ repository
 package repository
 
 import (

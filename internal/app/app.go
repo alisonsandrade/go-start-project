@@ -1,3 +1,4 @@
+// Package app onde estão centralizados todos os roteamentos e ciclo de vida do aplicativo
 package app
 
 import (
