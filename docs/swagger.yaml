@@ -115,9 +115,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Autentica credenciais e retorna o token JWT
+      description: Authenticates credentials and returns a JWT access token and a
+        refresh token
       parameters:
-      - description: Credenciais de login
+      - description: Login credentials
         in: body
         name: payload
         required: true
@@ -142,19 +143,42 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/domain.ErrorResponseDTO'
-      summary: Autenticação de usuário
+      summary: User authentication
+      tags:
+      - Auth
+  /api/auth/logout:
+    post:
+      description: Invalidates the session by revoking all of the user's refresh tokens
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.MessageResponseDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      security:
+      - BearerAuth: []
+      summary: Logout
       tags:
       - Auth
   /api/auth/refresh:
     post:
       consumes:
       - application/json
-      description: Recebe o Refresh Token atual e devolve um novo par de tokens (Access
-        e Refresh), rotacionando a sessão
+      description: Receives the current refresh token and returns a new token pair,
+        rotating the session
       parameters:
-      - description: Refresh Token
+      - description: Refresh token
         in: body
-        name: request
+        name: payload
         required: true
         schema:
           $ref: '#/definitions/domain.RefreshTokenDTO'
@@ -173,7 +197,42 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/domain.ErrorResponseDTO'
-      summary: Renovar sessão (Tokens)
+      summary: Refresh session (tokens)
+      tags:
+      - Auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new user with the default USER role and returns a token
+        pair
+      parameters:
+      - description: User registration data
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateUserDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.AuthResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.ErrorResponseDTO'
+      summary: Public user registration
       tags:
       - Auth
   /api/users:
@@ -292,36 +351,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Atualizar perfil do usuário logado
-      tags:
-      - Users
-  /api/users/register:
-    post:
-      consumes:
-      - application/json
-      description: Cadastra um novo usuário padrão no sistema
-      parameters:
-      - description: Dados do usuário
-        in: body
-        name: payload
-        required: true
-        schema:
-          $ref: '#/definitions/domain.CreateUserDTO'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/domain.User'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
-      summary: Cadastro público de usuário (Role USER)
       tags:
       - Users
 securityDefinitions:

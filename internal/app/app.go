@@ -50,15 +50,19 @@ func New() (*App, error) {
 		AllowCredentials: true,
 	}))
 
-	// 4. Instanciação e Fiação dos Módulos
+	// 4. Dependency wiring
 	userRepo := repository.NewUserRepository(db)
 	tokenRepo := repository.NewTokenRepository(db)
-	userService := service.NewUserService(userRepo, tokenRepo, cfg)
+
+	authService := service.NewAuthService(userRepo, tokenRepo, cfg)
+	userService := service.NewUserService(userRepo)
+
+	authHandler := handler.NewAuthHandler(authService)
 	userHandler := handler.NewUserHandler(userService)
 
-	// 5. Registro de Rotas por Domínio
+	// 5. Route registration by domain
 	r.Route("/api", func(api chi.Router) {
-		api.Mount("/auth", userHandler.AuthRoutes())
+		api.Mount("/auth", authHandler.AuthRoutes(cfg))
 		api.Mount("/users", userHandler.Routes(cfg))
 	})
 
