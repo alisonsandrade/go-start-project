@@ -2,6 +2,9 @@
 package domain
 
 import (
+	"errors"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -92,4 +95,32 @@ type MessageResponseDTO struct {
 
 type ErrorResponseDTO struct {
 	Error string `json:"error" example:"Messagem explicativa do error"`
+}
+
+// AdminUpdateUserDTO represents the payload for an admin to update any user's data.
+// Pointers are used to allow partial updates (PATCH behavior).
+type AdminUpdateUserDTO struct {
+	Name     *string `json:"name,omitempty"`
+	Email    *string `json:"email,omitempty"`
+	Role     *Role   `json:"role,omitempty"`
+	IsActive *bool   `json:"is_active,omitempty"`
+}
+
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+func (d *CreateUserDTO) Validate() error {
+	d.Name = strings.TrimSpace(d.Name)
+	d.Email = strings.ToLower(strings.TrimSpace(d.Email))
+
+	if len(d.Name) < 3 {
+		return errors.New("name must be at least 3 characters long")
+	}
+	if !emailRegex.MatchString(d.Email) {
+		return errors.New("invalid email address")
+	}
+	if len(d.Password) < 8 {
+		return errors.New("password must be at least 8 characters long")
+	}
+
+	return nil
 }

@@ -9,7 +9,7 @@
     "paths": {
         "/api/auth/login": {
             "post": {
-                "description": "Autentica credenciais e retorna o token JWT",
+                "description": "Authenticates credentials and returns a JWT access token and a refresh token",
                 "consumes": [
                     "application/json"
                 ],
@@ -19,10 +19,10 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Autenticação de usuário",
+                "summary": "User authentication",
                 "parameters": [
                     {
-                        "description": "Credenciais de login",
+                        "description": "Login credentials",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -59,9 +59,46 @@
                 }
             }
         },
+        "/api/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Invalidates the session by revoking all of the user's refresh tokens",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MessageResponseDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/refresh": {
             "post": {
-                "description": "Recebe o Refresh Token atual e devolve um novo par de tokens (Access e Refresh), rotacionando a sessão",
+                "description": "Receives the current refresh token and returns a new token pair, rotating the session",
                 "consumes": [
                     "application/json"
                 ],
@@ -71,11 +108,11 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Renovar sessão (Tokens)",
+                "summary": "Refresh session (tokens)",
                 "parameters": [
                     {
-                        "description": "Refresh Token",
-                        "name": "request",
+                        "description": "Refresh token",
+                        "name": "payload",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -98,6 +135,58 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/register": {
+            "post": {
+                "description": "Registers a new user with the default USER role and returns a token pair",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Public user registration",
+                "parameters": [
+                    {
+                        "description": "User registration data",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.CreateUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.AuthResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponseDTO"
                         }
@@ -277,52 +366,6 @@
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/users/register": {
-            "post": {
-                "description": "Cadastra um novo usuário padrão no sistema",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Cadastro público de usuário (Role USER)",
-                "parameters": [
-                    {
-                        "description": "Dados do usuário",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.CreateUserDTO"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.User"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponseDTO"
                         }
