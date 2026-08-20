@@ -53,17 +53,21 @@ func New() (*App, error) {
 	// 4. Dependency wiring
 	userRepo := repository.NewUserRepository(db)
 	tokenRepo := repository.NewTokenRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
 
 	authService := service.NewAuthService(userRepo, tokenRepo, cfg)
 	userService := service.NewUserService(userRepo)
+	roleService := service.NewRoleService(roleRepo)
 
 	authHandler := handler.NewAuthHandler(authService)
 	userHandler := handler.NewUserHandler(userService)
+	roleHandler := handler.NewRoleHandler(roleService)
 
 	// 5. Route registration by domain
 	r.Route("/api", func(api chi.Router) {
 		api.Mount("/auth", authHandler.AuthRoutes(cfg))
-		api.Mount("/users", userHandler.Routes(cfg))
+		api.Mount("/users", userHandler.Routes(cfg, roleRepo))
+		api.Mount("/roles", roleHandler.Routes(cfg, roleRepo))
 	})
 
 	// Documentação Swagger

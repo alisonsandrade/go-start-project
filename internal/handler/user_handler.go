@@ -9,6 +9,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/config"
 	"github.com/alisonsandrade/go-start-project/internal/domain"
 	"github.com/alisonsandrade/go-start-project/internal/middleware"
+	"github.com/alisonsandrade/go-start-project/internal/repository"
 	"github.com/alisonsandrade/go-start-project/internal/service"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
@@ -135,7 +136,7 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // Routes das rotas do Users
-func (h *UserHandler) Routes(cfg *config.Config) chi.Router {
+func (h *UserHandler) Routes(cfg *config.Config, roleRepo repository.RoleRepository) chi.Router {
 	r := chi.NewRouter()
 
 	// Protege todas as rotas da função com a exigência de token
@@ -145,10 +146,13 @@ func (h *UserHandler) Routes(cfg *config.Config) chi.Router {
 	r.Put("/me", h.UpdateUser)
 	r.Delete("/me", h.DeleteUser)
 
-	// Sub-grupo de rotas. Módulo RBAC. Apenas ADMIN
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.RequireRole(domain.RoleAdmin))
-		r.Get("/", h.ListUsers)
+	// Permission-gated subgroup. Module RBAC (ADMIN)
+	r.Group(func(admin chi.Router) {
+		admin.Use(middleware.RequirePermission(
+			roleRepo,
+			domain.PermissionListUsers,
+		))
+		admin.Get("/", h.ListUsers)
 	})
 
 	return r
