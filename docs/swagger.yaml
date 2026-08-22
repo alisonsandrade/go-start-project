@@ -1,4 +1,16 @@
 definitions:
+  apiresponse.ErrorResponse:
+    properties:
+      error:
+        example: invalid credentials
+        type: string
+    type: object
+  apiresponse.MessageResponse:
+    properties:
+      message:
+        example: operation completed successfully
+        type: string
+    type: object
   domain.AuthResponseDTO:
     properties:
       access_token:
@@ -8,42 +20,22 @@ definitions:
       user:
         $ref: '#/definitions/domain.User'
     type: object
-  domain.CreateUserDTO:
+  domain.CreateRoleRequest:
     properties:
-      avatar_url:
-        type: string
-      bio:
-        type: string
-      email:
-        type: string
-      job_title:
+      description:
         type: string
       name:
+        maxLength: 50
+        minLength: 2
         type: string
-      password:
-        type: string
-      phone:
-        type: string
-      role:
-        $ref: '#/definitions/domain.Role'
+    required:
+    - name
     type: object
-  domain.ErrorResponseDTO:
-    properties:
-      error:
-        example: Messagem explicativa do error
-        type: string
-    type: object
-  domain.LoginDTO:
+  domain.LoginRequest:
     properties:
       email:
         type: string
       password:
-        type: string
-    type: object
-  domain.MessageResponseDTO:
-    properties:
-      message:
-        example: Operação realizada com sucesso
         type: string
     type: object
   domain.Permission:
@@ -64,6 +56,32 @@ definitions:
         type: string
     required:
     - refresh_token
+    type: object
+  domain.RegisterRequest:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      email:
+        type: string
+      job_title:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/domain.Role'
+    type: object
+  domain.ReplacePermissionsRequest:
+    properties:
+      permission_ids:
+        items:
+          type: string
+        type: array
     type: object
   domain.Role:
     enum:
@@ -92,7 +110,18 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.UpdateUserDTO:
+  domain.UpdateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 50
+        minLength: 2
+        type: string
+    required:
+    - name
+    type: object
+  domain.UpdateUserRequest:
     properties:
       avatar_url:
         example: https://github.com/alisonsandrade/avatar.jpg
@@ -135,35 +164,6 @@ definitions:
       updated_at:
         type: string
     type: object
-  dto.CreateRoleRequest:
-    properties:
-      description:
-        type: string
-      name:
-        maxLength: 50
-        minLength: 2
-        type: string
-    required:
-    - name
-    type: object
-  dto.ReplacePermissionsRequest:
-    properties:
-      permission_ids:
-        items:
-          type: string
-        type: array
-    type: object
-  dto.UpdateRoleRequest:
-    properties:
-      description:
-        type: string
-      name:
-        maxLength: 50
-        minLength: 2
-        type: string
-    required:
-    - name
-    type: object
 info:
   contact: {}
   description: API do projeto Go Start.
@@ -182,7 +182,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/domain.LoginDTO'
+          $ref: '#/definitions/domain.LoginRequest'
       produces:
       - application/json
       responses:
@@ -193,15 +193,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       summary: User authentication
       tags:
       - Auth
@@ -214,15 +214,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.MessageResponseDTO'
+            $ref: '#/definitions/apiresponse.MessageResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Logout
@@ -251,11 +251,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       summary: Refresh session (tokens)
       tags:
       - Auth
@@ -271,7 +271,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/domain.CreateUserDTO'
+          $ref: '#/definitions/domain.RegisterRequest'
       produces:
       - application/json
       responses:
@@ -282,15 +282,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       summary: Public user registration
       tags:
       - Auth
@@ -309,7 +309,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List roles
@@ -325,7 +325,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/dto.CreateRoleRequest'
+          $ref: '#/definitions/domain.CreateRoleRequest'
       produces:
       - application/json
       responses:
@@ -336,15 +336,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create role
@@ -365,23 +365,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.MessageResponseDTO'
+            $ref: '#/definitions/apiresponse.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete role
@@ -405,15 +405,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get role
@@ -434,7 +434,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdateRoleRequest'
+          $ref: '#/definitions/domain.UpdateRoleRequest'
       produces:
       - application/json
       responses:
@@ -445,19 +445,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update role
@@ -479,30 +479,30 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/dto.ReplacePermissionsRequest'
+          $ref: '#/definitions/domain.ReplacePermissionsRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.MessageResponseDTO'
+            $ref: '#/definitions/apiresponse.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Replace role permissions
@@ -524,15 +524,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Listar todos os usuários (RBAC - ADMIN)
@@ -547,19 +547,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.MessageResponseDTO'
+            $ref: '#/definitions/apiresponse.MessageResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Deletar perfil do usuário logado (Soft Delete)
@@ -577,15 +577,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Obter perfil do usuário autenticado
@@ -601,7 +601,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/domain.UpdateUserDTO'
+          $ref: '#/definitions/domain.UpdateUserRequest'
       produces:
       - application/json
       responses:
@@ -612,15 +612,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/domain.ErrorResponseDTO'
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Atualizar perfil do usuário logado

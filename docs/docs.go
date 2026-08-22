@@ -35,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.LoginDTO"
+                            "$ref": "#/definitions/domain.LoginRequest"
                         }
                     }
                 ],
@@ -49,19 +49,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -86,19 +86,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.MessageResponseDTO"
+                            "$ref": "#/definitions/apiresponse.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -138,13 +138,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -170,7 +170,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.CreateUserDTO"
+                            "$ref": "#/definitions/domain.RegisterRequest"
                         }
                     }
                 ],
@@ -184,19 +184,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -230,7 +230,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -259,7 +259,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.CreateRoleRequest"
+                            "$ref": "#/definitions/domain.CreateRoleRequest"
                         }
                     }
                 ],
@@ -273,19 +273,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -325,19 +325,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -373,7 +373,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateRoleRequest"
+                            "$ref": "#/definitions/domain.UpdateRoleRequest"
                         }
                     }
                 ],
@@ -387,25 +387,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -437,31 +437,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.MessageResponseDTO"
+                            "$ref": "#/definitions/apiresponse.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -499,7 +499,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.ReplacePermissionsRequest"
+                            "$ref": "#/definitions/domain.ReplacePermissionsRequest"
                         }
                     }
                 ],
@@ -507,31 +507,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.MessageResponseDTO"
+                            "$ref": "#/definitions/apiresponse.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -565,19 +565,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -608,19 +608,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -649,7 +649,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.UpdateUserDTO"
+                            "$ref": "#/definitions/domain.UpdateUserRequest"
                         }
                     }
                 ],
@@ -663,19 +663,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -698,25 +698,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.MessageResponseDTO"
+                            "$ref": "#/definitions/apiresponse.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.ErrorResponseDTO"
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     }
                 }
@@ -724,6 +724,24 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "apiresponse.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "invalid credentials"
+                }
+            }
+        },
+        "apiresponse.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "operation completed successfully"
+                }
+            }
+        },
         "domain.AuthResponseDTO": {
             "type": "object",
             "properties": {
@@ -738,45 +756,23 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.CreateUserDTO": {
+        "domain.CreateRoleRequest": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "bio": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "job_title": {
+                "description": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "role": {
-                    "$ref": "#/definitions/domain.Role"
-                }
-            }
-        },
-        "domain.ErrorResponseDTO": {
-            "type": "object",
-            "properties": {
-                "error": {
                     "type": "string",
-                    "example": "Messagem explicativa do error"
+                    "maxLength": 50,
+                    "minLength": 2
                 }
             }
         },
-        "domain.LoginDTO": {
+        "domain.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -784,15 +780,6 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
-                }
-            }
-        },
-        "domain.MessageResponseDTO": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Operação realizada com sucesso"
                 }
             }
         },
@@ -822,6 +809,46 @@ const docTemplate = `{
                 "refresh_token": {
                     "type": "string",
                     "example": "dGhpcy1pcy1hLXJlZnJlc2gtdG9rZW4..."
+                }
+            }
+        },
+        "domain.RegisterRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "job_title": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/domain.Role"
+                }
+            }
+        },
+        "domain.ReplacePermissionsRequest": {
+            "type": "object",
+            "properties": {
+                "permission_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -865,7 +892,23 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.UpdateUserDTO": {
+        "domain.UpdateRoleRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 2
+                }
+            }
+        },
+        "domain.UpdateUserRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -925,49 +968,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
-                }
-            }
-        },
-        "dto.CreateRoleRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 2
-                }
-            }
-        },
-        "dto.ReplacePermissionsRequest": {
-            "type": "object",
-            "properties": {
-                "permission_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "dto.UpdateRoleRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 2
                 }
             }
         }
