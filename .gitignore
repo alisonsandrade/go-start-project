@@ -5,6 +5,7 @@
 *.dll
 *.so
 *.dylib
+bin/
 
 # Variáveis de ambiente sensíveis
 .env
