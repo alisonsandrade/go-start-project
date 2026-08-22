@@ -4,6 +4,7 @@ package domain
 import (
 	"time"
 
+	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/google/uuid"
 )
 
@@ -20,7 +21,7 @@ type RefreshTokenDTO struct {
 }
 
 type AuthResponseDTO struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	User         User   `json:"user"`
+	AccessToken  string      `json:"access_token"`
+	RefreshToken string      `json:"refresh_token"`
+	User         domain.User `json:"user"`
 }

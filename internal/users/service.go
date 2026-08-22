@@ -1,11 +1,10 @@
-// Package service onde estão todos os serviços e referências ao repository da entidade users
-package service
+// Package users service onde estão todos os serviços e referências ao repository da entidade users
+package users
 
 import (
 	"errors"
 
-	"github.com/alisonsandrade/go-start-project/internal/domain"
-	"github.com/alisonsandrade/go-start-project/internal/repository"
+	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/google/uuid"
 )
 
@@ -15,24 +14,27 @@ var (
 
 	// ErrInvalidRole is returned when an invalid role is provided.
 	ErrInvalidRole = errors.New("invalid role")
+
+	// ErrEmailAlreadyExists indicates the email is already registered.
+	ErrEmailAlreadyExists = errors.New("email already exists")
 )
 
 // UserService defines the contract for user-related business logic.
 type UserService interface {
 	GetUser(userID uuid.UUID) (*domain.User, error)
-	UpdateUser(userID uuid.UUID, dto domain.UpdateUserDTO) (*domain.User, error)
+	UpdateUser(userID uuid.UUID, dto domain.UpdateUserRequest) (*domain.User, error)
 	DeleteUser(userID uuid.UUID) error
 
 	// --- Admin-exclusive methods ---
 	ListUsers() ([]domain.User, error)
 	GetUserByID(id uuid.UUID) (*domain.User, error)
-	UpdateUserAsAdmin(id uuid.UUID, dto domain.AdminUpdateUserDTO) error
+	UpdateUserAsAdmin(id uuid.UUID, dto domain.AdminUpdateUserRequest) error
 	DeleteUserAsAdmin(id uuid.UUID) error
 }
 
-type userService struct{ userRepo repository.UserRepository }
+type userService struct{ userRepo UserRepository }
 
-func NewUserService(userRepo repository.UserRepository) UserService {
+func NewUserService(userRepo UserRepository) UserService {
 	return &userService{userRepo: userRepo}
 }
 
@@ -50,7 +52,7 @@ func (s *userService) GetUser(userID uuid.UUID) (*domain.User, error) {
 	return user, nil
 }
 
-func (s *userService) UpdateUser(userID uuid.UUID, dto domain.UpdateUserDTO) (*domain.User, error) {
+func (s *userService) UpdateUser(userID uuid.UUID, dto domain.UpdateUserRequest) (*domain.User, error) {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, err
@@ -110,7 +112,7 @@ func (s *userService) GetUserByID(id uuid.UUID) (*domain.User, error) {
 	return user, nil
 }
 
-func (s *userService) UpdateUserAsAdmin(id uuid.UUID, dto domain.AdminUpdateUserDTO) error {
+func (s *userService) UpdateUserAsAdmin(id uuid.UUID, dto domain.AdminUpdateUserRequest) error {
 	user, err := s.userRepo.FindByID(id)
 	if err != nil || user == nil {
 		return ErrUserNotFound

@@ -1,5 +1,5 @@
-// Package service
-package service
+// Package roles
+package roles
 
 import "errors"
 

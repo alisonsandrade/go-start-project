@@ -1,8 +1,8 @@
-// Package repository
-package repository
+// Package roles
+package roles
 
 import (
-	"github.com/alisonsandrade/go-start-project/internal/domain"
+	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -36,7 +36,7 @@ func NewRoleRepository(db *gorm.DB) RoleRepository {
 
 // Create persists a new role and its many-to-many permission assciations
 func (r *roleRepository) Create(role *domain.RoleEntity) error {
-	role.IsSystem = false // clasule security
+	role.IsSystem = false // safety clause
 	return r.db.Create(role).Error
 }
 

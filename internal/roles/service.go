@@ -1,11 +1,10 @@
-// Package service
-package service
+// Package roles
+package roles
 
 import (
 	"errors"
 
-	"github.com/alisonsandrade/go-start-project/internal/domain"
-	"github.com/alisonsandrade/go-start-project/internal/repository"
+	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -27,11 +26,11 @@ type RoleService interface {
 // roleService is the concrete implementaion. It depends on the repository
 // INTERFACE, never on the concrete Gorm struct - that's what makes it testable.
 type roleService struct {
-	repo repository.RoleRepository
+	repo RoleRepository
 }
 
-// NewRoleService wires a RoleService with its repository dependency
-func NewRoleService(repo repository.RoleRepository) RoleService {
+// NewRoleService wires a RoleService with its dependency
+func NewRoleService(repo RoleRepository) RoleService {
 	return &roleService{repo: repo}
 }
 
@@ -55,7 +54,7 @@ func (s *roleService) Create(role *domain.RoleEntity) (*domain.RoleEntity, error
 }
 
 // GetByID returns a role by its UUID, translating persistence errors into
-// domain errors. A missing record becomes ErrRoleNotFound
+// errors. A missing record becomes ErrRoleNotFound
 func (s *roleService) GetByID(id uuid.UUID) (*domain.RoleEntity, error) {
 	role, err := s.repo.GetByID(id)
 	if err != nil {

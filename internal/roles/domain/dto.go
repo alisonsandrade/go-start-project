@@ -1,5 +1,5 @@
-// Package dto
-package dto
+// Package domain
+package domain
 
 import "github.com/google/uuid"
 

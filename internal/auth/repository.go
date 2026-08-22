@@ -1,8 +1,8 @@
-// Package repository implementa a persistência de dados da aplicação interagindo com o banco./ repository
-package repository
+// Package auth repository implementa a persistência de dados da aplicação interagindo com o banco./ repository
+package auth
 
 import (
-	"github.com/alisonsandrade/go-start-project/internal/domain"
+	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

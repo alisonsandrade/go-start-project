@@ -1,9 +1,10 @@
-package repository
+// Package users
+package users
 
 import (
 	"errors"
 
-	"github.com/alisonsandrade/go-start-project/internal/domain"
+	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

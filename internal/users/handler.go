@@ -1,25 +1,27 @@
-// Package handler prover a orquestração entre as rotas e os serviços.
-package handler
+// Package users handler prover a orquestração entre as rotas e os serviços.
+package users
 
 import (
 	"encoding/json"
 	"errors"
 	"net/http"
 
+	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/config"
-	"github.com/alisonsandrade/go-start-project/internal/domain"
-	"github.com/alisonsandrade/go-start-project/internal/middleware"
-	"github.com/alisonsandrade/go-start-project/internal/repository"
-	"github.com/alisonsandrade/go-start-project/internal/service"
+	"github.com/alisonsandrade/go-start-project/internal/platform"
+	"github.com/alisonsandrade/go-start-project/internal/roles"
+	rolesDomain "github.com/alisonsandrade/go-start-project/internal/roles/domain"
+	"github.com/alisonsandrade/go-start-project/internal/users/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
 )
 
 type UserHandler struct {
-	userService service.UserService
+	userService UserService
 }
 
-func NewUserHandler(userService service.UserService) *UserHandler {
+func NewUserHandler(userService UserService) *UserHandler {
 	return &UserHandler{userService: userService}
 }
 
@@ -30,24 +32,24 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 // @Security     BearerAuth
 // @Produce      json
 // @Success      200  {object}  domain.User
-// @Failure      401  {object}  domain.ErrorResponseDTO
-// @Failure      404  {object}  domain.ErrorResponseDTO
-// @Failure      500  {object}  domain.ErrorResponseDTO
+// @Failure      401  {object}  apiresponse.ErrorResponse
+// @Failure      404  {object}  apiresponse.ErrorResponse
+// @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users/me [get]
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	claims := r.Context().Value(middleware.UserClaimsKey).(*token.CustomClaims)
+	claims := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 
 	user, err := h.userService.GetUser(claims.UserID)
 	if err != nil {
-		if errors.Is(err, service.ErrUserNotFound) {
-			ErrorJSON(w, http.StatusNotFound, err.Error())
+		if errors.Is(err, ErrUserNotFound) {
+			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	JSON(w, http.StatusOK, user)
+	platform.JSON(w, http.StatusOK, user)
 }
 
 // ListUsers retorna uma lista de todos os usuários cadastrados no sistema.
@@ -57,18 +59,18 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Produce      json
 // @Success      200  {array}   domain.User
-// @Failure      401  {object}  domain.ErrorResponseDTO
-// @Failure      403  {object}  domain.ErrorResponseDTO
-// @Failure      500  {object}  domain.ErrorResponseDTO
+// @Failure      401  {object}  apiresponse.ErrorResponse
+// @Failure      403  {object}  apiresponse.ErrorResponse
+// @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users [get]
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.userService.ListUsers()
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	JSON(w, http.StatusOK, users)
+	platform.JSON(w, http.StatusOK, users)
 }
 
 // UpdateUser atualiza os dados cadastrais do próprio usuário autenticado.
@@ -78,32 +80,32 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Accept       json
 // @Produce      json
-// @Param        payload body domain.UpdateUserDTO true "Campos para atualização"
+// @Param        payload body domain.UpdateUserRequest true "Campos para atualização"
 // @Success      200  {object}  domain.User
-// @Failure      400  {object}  domain.ErrorResponseDTO
-// @Failure      401  {object}  domain.ErrorResponseDTO
-// @Failure      500  {object}  domain.ErrorResponseDTO
+// @Failure      400  {object}  apiresponse.ErrorResponse
+// @Failure      401  {object}  apiresponse.ErrorResponse
+// @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users/me [put]
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	claims := r.Context().Value(middleware.UserClaimsKey).(*token.CustomClaims)
+	claims := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 
-	var dto domain.UpdateUserDTO
+	var dto domain.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, "Corpo da requisição inválido")
+		platform.ErrorJSON(w, http.StatusBadRequest, "Corpo da requisição inválido")
 		return
 	}
 
 	user, err := h.userService.UpdateUser(claims.UserID, dto)
 	if err != nil {
-		if errors.Is(err, service.ErrUserNotFound) {
-			ErrorJSON(w, http.StatusNotFound, err.Error())
+		if errors.Is(err, ErrUserNotFound) {
+			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "erro interno ao tentar atualizar o registro")
+		platform.ErrorJSON(w, http.StatusInternalServerError, "erro interno ao tentar atualizar o registro")
 		return
 	}
 
-	JSON(w, http.StatusOK, user)
+	platform.JSON(w, http.StatusOK, user)
 }
 
 // DeleteUser desativa/exclui logicamente a conta do usuário autenticado.
@@ -112,35 +114,35 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // @Tags         Users
 // @Security     BearerAuth
 // @Produce      json
-// @Success      200  {object}  domain.MessageResponseDTO
-// @Failure      401  {object}  domain.ErrorResponseDTO
-// @Failure      404  {object}  domain.ErrorResponseDTO
-// @Failure      500  {object}  domain.ErrorResponseDTO
+// @Success      200  {object}  apiresponse.MessageResponse
+// @Failure      401  {object}  apiresponse.ErrorResponse
+// @Failure      404  {object}  apiresponse.ErrorResponse
+// @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users/me [delete]
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	claims := r.Context().Value(middleware.UserClaimsKey).(*token.CustomClaims)
+	claims := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 
 	err := h.userService.DeleteUser(claims.UserID)
 	if err != nil {
-		if errors.Is(err, service.ErrUserNotFound) {
-			ErrorJSON(w, http.StatusNotFound, err.Error())
+		if errors.Is(err, ErrUserNotFound) {
+			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "erro interno ao deletar usuário")
+		platform.ErrorJSON(w, http.StatusInternalServerError, "erro interno ao deletar usuário")
 		return
 	}
 
-	JSON(w, http.StatusOK, domain.MessageResponseDTO{
+	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
 		Message: "Usuário desativado com sucesso",
 	})
 }
 
 // Routes das rotas do Users
-func (h *UserHandler) Routes(cfg *config.Config, roleRepo repository.RoleRepository) chi.Router {
+func (h *UserHandler) Routes(cfg *config.Config, roleRepo roles.RoleRepository) chi.Router {
 	r := chi.NewRouter()
 
 	// Protege todas as rotas da função com a exigência de token
-	r.Use(middleware.AuthMiddleware(cfg))
+	r.Use(auth.AuthMiddleware(cfg))
 
 	r.Get("/me", h.GetUser)
 	r.Put("/me", h.UpdateUser)
@@ -148,9 +150,9 @@ func (h *UserHandler) Routes(cfg *config.Config, roleRepo repository.RoleReposit
 
 	// Permission-gated subgroup. Module RBAC (ADMIN)
 	r.Group(func(admin chi.Router) {
-		admin.Use(middleware.RequirePermission(
+		admin.Use(roles.RequirePermission(
 			roleRepo,
-			domain.PermissionListUsers,
+			rolesDomain.PermissionListUsers,
 		))
 		admin.Get("/", h.ListUsers)
 	})

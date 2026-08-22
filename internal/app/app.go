@@ -14,10 +14,11 @@ import (
 	"github.com/go-chi/cors"
 	"gorm.io/gorm"
 
+	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/config"
-	"github.com/alisonsandrade/go-start-project/internal/handler"
-	"github.com/alisonsandrade/go-start-project/internal/repository"
-	"github.com/alisonsandrade/go-start-project/internal/service"
+	"github.com/alisonsandrade/go-start-project/internal/platform/database"
+	"github.com/alisonsandrade/go-start-project/internal/roles"
+	"github.com/alisonsandrade/go-start-project/internal/users"
 )
 
 type App struct {
@@ -34,7 +35,7 @@ func New() (*App, error) {
 	}
 
 	// 2. Conecta ao Banco de Dados
-	db, err := repository.NewDatabase(cfg)
+	db, err := database.NewDatabase(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("falha ao conectar no banco: %w", err)
 	}
@@ -51,17 +52,17 @@ func New() (*App, error) {
 	}))
 
 	// 4. Dependency wiring
-	userRepo := repository.NewUserRepository(db)
-	tokenRepo := repository.NewTokenRepository(db)
-	roleRepo := repository.NewRoleRepository(db)
+	userRepo := users.NewUserRepository(db)
+	tokenRepo := auth.NewTokenRepository(db)
+	roleRepo := roles.NewRoleRepository(db)
 
-	authService := service.NewAuthService(userRepo, tokenRepo, cfg)
-	userService := service.NewUserService(userRepo)
-	roleService := service.NewRoleService(roleRepo)
+	authService := auth.NewAuthService(userRepo, tokenRepo, cfg)
+	userService := users.NewUserService(userRepo)
+	roleService := roles.NewRoleService(roleRepo)
 
-	authHandler := handler.NewAuthHandler(authService)
-	userHandler := handler.NewUserHandler(userService)
-	roleHandler := handler.NewRoleHandler(roleService)
+	authHandler := auth.NewAuthHandler(authService)
+	userHandler := users.NewUserHandler(userService)
+	roleHandler := roles.NewRoleHandler(roleService)
 
 	// 5. Route registration by domain
 	r.Route("/api", func(api chi.Router) {

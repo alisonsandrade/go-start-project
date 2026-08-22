@@ -1,42 +1,40 @@
-// Package service
-package service
+// Package auth service
+package auth
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
 	"github.com/alisonsandrade/go-start-project/internal/config"
-	"github.com/alisonsandrade/go-start-project/internal/domain"
-	"github.com/alisonsandrade/go-start-project/internal/repository"
+	usersDomain "github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/google/uuid"
 )
 
-var (
-	ErrEmailAlreadyExists  = errors.New("e-mail já cadastrado no sistema")
-	ErrInvalidCredentials  = errors.New("credenciais inválidas")
-	ErrUserInactive        = errors.New("usuário está inativo")
-	ErrInvalidRefreshToken = errors.New("refresh token inválido ou expirado")
-)
+type UserRepository interface {
+	Create(user *usersDomain.User) error
+	FindByEmail(email string) (*usersDomain.User, error)
+	FindByID(id uuid.UUID) (*usersDomain.User, error)
+}
 
 type AuthService interface {
-	Register(dto domain.CreateUserDTO) (*domain.AuthResponseDTO, error)
-	Login(dto domain.LoginDTO) (*domain.AuthResponseDTO, error)
+	Register(dto domain.RegisterRequest) (*domain.AuthResponseDTO, error)
+	Login(dto domain.LoginRequest) (*domain.AuthResponseDTO, error)
 	RefreshSession(refreshToken string) (*domain.AuthResponseDTO, error)
 	Logout(userID uuid.UUID) error
 }
 
 type authService struct {
-	userRepo  repository.UserRepository
-	tokenRepo repository.TokenRepository
+	userRepo  UserRepository
+	tokenRepo TokenRepository
 	cfg       *config.Config
 }
 
 func NewAuthService(
-	userRepo repository.UserRepository,
-	tokenRepo repository.TokenRepository,
+	userRepo UserRepository,
+	tokenRepo TokenRepository,
 	cfg *config.Config,
 ) AuthService {
 	return &authService{
@@ -47,7 +45,7 @@ func NewAuthService(
 }
 
 // Register creates a new user. Public registration always assigns RoleUser.
-func (s *authService) Register(dto domain.CreateUserDTO) (*domain.AuthResponseDTO, error) {
+func (s *authService) Register(dto domain.RegisterRequest) (*domain.AuthResponseDTO, error) {
 	existingUser, err := s.userRepo.FindByEmail(dto.Email)
 	if err != nil {
 		return nil, err
@@ -56,11 +54,11 @@ func (s *authService) Register(dto domain.CreateUserDTO) (*domain.AuthResponseDT
 		return nil, ErrEmailAlreadyExists
 	}
 
-	user := &domain.User{
+	user := &usersDomain.User{
 		Name:      dto.Name,
 		Email:     strings.ToLower(strings.TrimSpace(dto.Email)),
 		Password:  dto.Password,
-		Role:      domain.RoleUser,
+		Role:      usersDomain.RoleUser,
 		Phone:     dto.Phone,
 		AvatarURL: dto.AvatarURL,
 		JobTitle:  dto.JobTitle,
@@ -80,7 +78,7 @@ func (s *authService) Register(dto domain.CreateUserDTO) (*domain.AuthResponseDT
 }
 
 // Login authenticates the given credentials and returns a new token pair.
-func (s *authService) Login(dto domain.LoginDTO) (*domain.AuthResponseDTO, error) {
+func (s *authService) Login(dto domain.LoginRequest) (*domain.AuthResponseDTO, error) {
 	user, err := s.userRepo.FindByEmail(dto.Email)
 	if err != nil || user == nil {
 		return nil, ErrInvalidCredentials
@@ -130,7 +128,7 @@ func (s *authService) RefreshSession(refreshToken string) (*domain.AuthResponseD
 }
 
 // generateAuthResponse builds the access and refresh tokens and persists the refresh token.
-func (s *authService) generateAuthResponse(user *domain.User) (*domain.AuthResponseDTO, error) {
+func (s *authService) generateAuthResponse(user *usersDomain.User) (*domain.AuthResponseDTO, error) {
 	expHours, _ := strconv.Atoi(s.cfg.JWTExpirationHours)
 	if expHours == 0 {
 		expHours = 24

@@ -1,8 +1,8 @@
-// Package repository provides persistence operations for the application.
-package repository
+// Package roles provides persistence operations for the application.
+package roles
 
 import (
-	"github.com/alisonsandrade/go-start-project/internal/domain"
+	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
