@@ -31,6 +31,25 @@ definitions:
     required:
     - name
     type: object
+  domain.CreateUserRequest:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      email:
+        type: string
+      job_title:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/domain.Role'
+    type: object
   domain.LoginRequest:
     properties:
       email:
@@ -538,6 +557,41 @@ paths:
       summary: Listar todos os usuários (RBAC - ADMIN)
       tags:
       - Admin
+    post:
+      consumes:
+      - application/json
+      description: Cria um novo usuário para acesso ao sistema.
+      parameters:
+      - description: Campos para cadastrar novo usuário
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Criar um novo perfil do usuário
+      tags:
+      - Users
   /api/users/me:
     delete:
       description: Realiza a exclusão lógica do usuário autenticado no sistema

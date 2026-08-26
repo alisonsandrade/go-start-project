@@ -37,11 +37,17 @@ help: ## Mostra esta ajuda
 	@echo ""
 
 # ---- Application -------------------------------------------------------------
+BINARY_NAME ?= api.exe
+MAIN_PATH   ?= ./cmd/api
+
 run: ## Sobe a aplicacao (go run)
-	go run $(MAIN_PATH)
+	./bin/$(BINARY_NAME)
 
 build: ## Compila o binario em ./bin
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
+
+dev: ## Executa o live reload forçando o caminho correto
+	air --build.cmd "go build -o ./tmp/main.exe ./cmd/api" --build.bin "tmp/main.exe"
 
 clean: ## Remove artefatos de build
 	rm -rf bin/
@@ -74,17 +80,17 @@ docker-logs: ## Acompanha os logs do PostgreSQL
 
 # ---- Migrations (golang-migrate) ---------------------------------------------
 migrate-up: ## Aplica todas as migrations pendentes
-	migrate -path $(MIGRATIONS) -database "$(DB_URL)" up
+	go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path $(MIGRATIONS) -database "$(DB_URL)" up
 
 migrate-down: ## Reverte a ultima migration
-	migrate -path $(MIGRATIONS) -database "$(DB_URL)" down 1
+	go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path $(MIGRATIONS) -database "$(DB_URL)" down 1
 
 migrate-create: ## Cria uma nova migration. Uso: make migrate-create name=create_x_table
-	migrate create -ext sql -dir $(MIGRATIONS) -seq $(name)
+	go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest create -ext sql -dir $(MIGRATIONS) -seq $(name)
 
 migrate-force: ## Forca uma versao (destrava migration suja). Uso: make migrate-force version=3
-	migrate -path $(MIGRATIONS) -database "$(DB_URL)" force $(version)
+	go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest -path $(MIGRATIONS) -database "$(DB_URL)" force $(version)
 
 # ---- Docs --------------------------------------------------------------------
 swag: ## Regenera a documentacao Swagger
-	swag init -g $(MAIN_PATH)/main.go
+	go run github.com/swaggo/swag/cmd/swag@latest init -g $(MAIN_PATH)/main.go
