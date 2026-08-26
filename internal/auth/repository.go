@@ -2,16 +2,25 @@
 package auth
 
 import (
+	"context"
+
 	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
+	usersDomain "github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
+type UserRepository interface {
+	Create(ctx context.Context, user *usersDomain.User) error
+	FindByEmail(ctx context.Context, email string) (*usersDomain.User, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*usersDomain.User, error)
+}
+
 type TokenRepository interface {
-	Create(token *domain.RefreshToken) error
-	FindByToken(token string) (*domain.RefreshToken, error)
-	DeleteByUserID(userID uuid.UUID) error
-	Delete(token string) error
+	Create(ctx context.Context, token *domain.RefreshToken) error
+	FindByToken(ctx context.Context, token string) (*domain.RefreshToken, error)
+	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
+	Delete(ctx context.Context, token string) error
 }
 
 type tokenRepository struct {
@@ -22,11 +31,11 @@ func NewTokenRepository(db *gorm.DB) TokenRepository {
 	return &tokenRepository{db}
 }
 
-func (r *tokenRepository) Create(token *domain.RefreshToken) error {
+func (r *tokenRepository) Create(ctx context.Context, token *domain.RefreshToken) error {
 	return r.db.Create(token).Error
 }
 
-func (r *tokenRepository) FindByToken(token string) (*domain.RefreshToken, error) {
+func (r *tokenRepository) FindByToken(ctx context.Context, token string) (*domain.RefreshToken, error) {
 	var rt domain.RefreshToken
 	err := r.db.Where("token = ?", token).First(&rt).Error
 	if err != nil {
@@ -35,10 +44,10 @@ func (r *tokenRepository) FindByToken(token string) (*domain.RefreshToken, error
 	return &rt, nil
 }
 
-func (r *tokenRepository) DeleteByUserID(userID uuid.UUID) error {
+func (r *tokenRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
 	return r.db.Where("user_id = ?", userID).Delete(&domain.RefreshToken{}).Error
 }
 
-func (r *tokenRepository) Delete(token string) error {
+func (r *tokenRepository) Delete(ctx context.Context, token string) error {
 	return r.db.Where("token = ?", token).Delete(&domain.RefreshToken{}).Error
 }

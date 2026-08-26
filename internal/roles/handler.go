@@ -279,7 +279,7 @@ func (h *RoleHandler) Routes(cfg *config.Config, roleRepo RoleRepository) chi.Ro
 	r.Group(func(admin chi.Router) {
 		admin.Use(RequireRole(
 			// domain.RoleAdmin,
-			"ADMIN", // Manter essa string enquanto não migro o users
+			"admin", // Manter essa string enquanto não migro o users
 		))
 
 		admin.Get("/", h.ListRoles)

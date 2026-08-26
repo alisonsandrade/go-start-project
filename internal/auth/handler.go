@@ -48,7 +48,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authResponse, err := h.authService.Register(dto)
+	authResponse, err := h.authService.Register(r.Context(), dto)
 	if err != nil {
 		if errors.Is(err, ErrEmailAlreadyExists) {
 			platform.ErrorJSON(w, http.StatusConflict, err.Error())
@@ -80,7 +80,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authResponse, err := h.authService.Login(dto)
+	authResponse, err := h.authService.Login(r.Context(), dto)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) || errors.Is(err, ErrUserInactive) {
 			platform.ErrorJSON(w, http.StatusUnauthorized, err.Error())
@@ -116,7 +116,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authResponse, err := h.authService.RefreshSession(dto.RefreshToken)
+	authResponse, err := h.authService.RefreshSession(r.Context(), dto.RefreshToken)
 	if err != nil {
 		platform.ErrorJSON(w, http.StatusUnauthorized, err.Error())
 		return
@@ -142,7 +142,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.authService.Logout(claims.UserID); err != nil {
+	if err := h.authService.Logout(r.Context(), claims.UserID); err != nil {
 		platform.ErrorJSON(w, http.StatusInternalServerError, "failed to logout")
 		return
 	}
