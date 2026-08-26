@@ -1,18 +1,19 @@
 # Go Start Project 🚀
 
-Boilerplate de API RESTful em **Go**, estruturado com Clean Architecture, autenticação JWT com refresh token rotativo, RBAC e pronto para produção. Clone, configure o `.env` e comece a construir o seu domínio.
+Boilerplate de API RESTful em **Go**, estruturado com Clean Architecture e Domain-Driven Design (DDD), autenticação JWT com refresh token rotativo, RBAC modular, Value Objects com persistência nativa e propagação de `context.Context`.
 
-> 🎯 **Filosofia:** modularidade pragmática sobre abstrações pesadas. Organização por camadas, código explícito e sem dependências desnecessárias.
+> 🎯 **Filosofia:** modularidade pragmática sobre abstrações pesadas. Organização por contextos/módulos, código explícito, tipagem estrita com Value Objects e controle de ciclo de vida de requisições.
 
 ---
 
 ## 📑 Índice
 
 - [Tecnologias](#️-tecnologias-utilizadas)
-- [Arquitetura](#️-arquitetura)
+- [Arquitetura e Melhorias](#️-arquitetura-e-melhorias)
 - [Estrutura do projeto](#️-estrutura-do-projeto)
 - [Variáveis de ambiente](#️-variáveis-de-ambiente-env)
 - [Como executar](#-como-executar)
+- [Seed Inicial](#-seed-inicial-de-admin)
 - [Migrations](#️-migrations)
 - [Endpoints da API](#-endpoints-da-api)
 - [Fluxo de autenticação](#-fluxo-de-autenticação)
@@ -26,59 +27,88 @@ Boilerplate de API RESTful em **Go**, estruturado com Clean Architecture, autent
 | Camada | Tecnologia |
 |---|---|
 | **Linguagem** | Go 1.25+ |
-| **Roteador** | Chi Router v5 |
-| **ORM** | GORM |
+| **Roteador & Middlewares** | Chi Router v5 (`go-chi/chi/v5` e `go-chi/cors`) |
+| **ORM & Driver** | GORM com PostgreSQL (`gorm.io/gorm`, `gorm.io/driver/postgres`) |
 | **Banco de Dados** | PostgreSQL 16 |
 | **Autenticação** | JWT (`golang-jwt/jwt/v5`) + Refresh Token rotativo |
-| **Autorização** | RBAC Middleware (ADMIN / USER) |
-| **Segurança** | Bcrypt (`golang.org/x/crypto/bcrypt`) |
-| **Documentação** | Swagger (`swaggo/swag`) |
+| **Autorização** | RBAC Modular (`auth`, `roles`, `users`) |
+| **Criptografia & Tipos** | Bcrypt (`golang.org/x/crypto/bcrypt`) + UUID (`google/uuid`) |
+| **Hot Reload** | Air (`.air.toml`) |
+| **Documentação** | Swagger (`swaggo/swag`, `swaggo/http-swagger/v2`) |
 | **Containerização** | Docker & Docker Compose |
 
 ---
 
-## 🏛️ Arquitetura
+## 🏛️ Arquitetura e Melhorias
 
-O projeto segue uma separação clara em camadas, com injeção de dependências centralizada no *Composition Root* (`internal/app/app.go`):
+O projeto adota a separação por **módulos de contexto** dentro de `internal/`, além de padrões sólidos da linguagem Go:
+
 
 ```
-handler  →  service  →  repository  →  banco de dados
+
+Handler (HTTP)  →  Service (Regras de Negócio)  →  Repository (GORM/SQL)
+
 ```
 
-- **handler** — recebe o HTTP, valida a entrada e traduz erros de negócio em status HTTP.
-- **service** — regras de negócio (casos de uso). Isolado por domínio.
-- **repository** — persistência (GORM). Exposto por interfaces.
-- **domain** — entidades, DTOs e regras puras (inclui a validação dos DTOs).
-
-Os domínios de **autenticação** e **gestão de usuários** são separados:
-
-- `AuthService` / `AuthHandler` → registro, login, refresh e logout.
-- `UserService` / `UserHandler` → perfil do usuário e administração.
+- **Propagação de `context.Context`**: Todos os métodos de repositories e services recebem `ctx context.Context`, garantindo cancelamento automático de queries de I/O em caso de disconnect/timeout do cliente HTTP.
+- **Value Objects Centrais (`pkg/domain`)**: Tipos de domínio `Email` e `Password` com auto-validação, normalização, hashing e implementação nativa das interfaces `driver.Valuer`, `sql.Scanner` e `json.Marshaler`.
+- **Factory de Entidade**: Construtores como `NewUser` asseguram que nenhuma struct nasça em estado inválido.
+- **Seed Idempotente**: Rotina automática no bootstrap da aplicação para criação inicial do Administrador padrão sem falhas de duplicação.
+- **Respostas JSON Padronizadas**: Módulo de resposta estruturada (`pkg/apiresponse`).
 
 ---
 
 ## 🗂️ Estrutura do Projeto
 
-```
+```text
 .
 ├── cmd/
-│   └── api/                 # Entrypoint principal (main.go)
+│   └── api/
+│       └── main.go                    # Entrypoint da aplicação
 ├── internal/
-│   ├── app/                 # Composition Root & ciclo de vida
-│   ├── config/              # Variáveis de ambiente (.env)
-│   ├── domain/              # Entidades, DTOs e validações
-│   ├── handler/             # Controladores HTTP (auth e user)
-│   ├── middleware/          # Autenticação JWT e RBAC
-│   ├── repository/          # Persistência e conexão GORM
-│   └── service/             # Casos de uso (auth e user)
-├── migrations/              # Migrations SQL (up/down)
+│   ├── app/
+│   │   └── app.go                     # Composition Root & ciclo de vida
+│   ├── auth/                          # Contexto de Autenticação
+│   │   ├── domain/                    # DTOs e Tokens
+│   │   ├── errors.go                  # Erros de autenticação
+│   │   ├── handler.go                 # Controladores HTTP de Auth
+│   │   ├── middleware.go              # Middleware de Autenticação JWT
+│   │   ├── repository.go              # Persistência de Refresh Tokens
+│   │   └── service.go                 # Regras de Login/Refresh/Logout
+│   ├── config/
+│   │   └── config.go                  # Carregamento do .env
+│   ├── platform/
+│   │   ├── database/
+│   │   │   └── db.go                  # Conexão e pooling GORM
+│   │   └── response.go                # Helpers de resposta HTTP
+│   ├── roles/                         # Contexto de RBAC / Permissões
+│   │   ├── domain/                    # Entidades e DTOs de Roles
+│   │   ├── errors.go                  # Erros de papéis
+│   │   ├── handler.go                 # Controladores HTTP de Roles
+│   │   ├── middleware.go              # Middleware de RBAC
+│   │   ├── permission_repository.go   # Repositório de Permissões
+│   │   ├── repository.go              # Repositório de Roles
+│   │   └── service.go                 # Casos de uso de Roles
+│   └── users/                         # Contexto de Gestão de Usuários
+│       ├── domain/
+│       │   ├── dto.go                 # DTOs de criação/atualização
+│       │   └── user.go                # Entidade User e Factory
+│       ├── handler.go                 # Controladores HTTP de Usuários
+│       ├── repository.go              # Persistência de Usuários
+│       ├── seed.go                    # Rotina de Seed do Admin
+│       └── service.go                 # Casos de uso de Usuários
+├── migrations/                        # Scripts SQL de migração (up/down)
 ├── pkg/
-│   └── token/               # Utilitários JWT (generate/parse)
-├── docs/                    # Swagger gerado (não editar à mão)
-├── docker-compose.yml       # PostgreSQL + API
-├── Dockerfile               # Build multi-stage enxuto
-├── LICENSE                  # Licença MIT
+│   ├── apiresponse/                   # Padronização de mensagens e erros HTTP
+│   ├── domain/                        # Value Objects compartilhados (Email, Password)
+│   └── token/                         # Geração e validação de JWT
+├── docs/                              # Swagger gerado automaticamente
+├── .air.toml                          # Configuração de Live Reload com Air
+├── Dockerfile                         # Build multi-stage da aplicação
+├── Makefile                           # Automações de build, run, docs e migrations
+├── LICENSE                            # Licença MIT
 └── README.md
+
 ```
 
 ---
@@ -95,40 +125,86 @@ DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=gostartdb
 DB_SSLMODE=disable
+
+# JWT Settings
 JWT_SECRET=super_secret_jwt_key_here
 JWT_EXPIRATION_HOURS=24
+
+# Seed Settings (Admin Padrão)
+ADMIN_DEFAULT_NAME=Super Admin
+ADMIN_DEFAULT_EMAIL=admin@admin.com
+ADMIN_DEFAULT_PASSWORD=Admin@123456
+
 ```
 
-> 🔒 **Segurança:** o `.env` está no `.gitignore` e **nunca** deve ser versionado. Em produção, use um `JWT_SECRET` longo (> 32 caracteres) e aleatório, injetado por um gerenciador de segredos.
+> 🔒 **Segurança:** O arquivo `.env` está configurado no `.gitignore`. Em produção, utilize credenciais seguras e variáveis injetadas pelo ambiente de hospedagem.
 
 ---
 
 ## 🚀 Como Executar
 
-### 1. Suba o PostgreSQL via Docker
+### 1. Suba o Banco de Dados com Docker
 
 ```bash
 docker-compose up -d postgres
+
 ```
 
-### 2. Rode a aplicação
+### 2. Execute as Migrations
 
 ```bash
+make migrate-up
+# ou
+migrate -path migrations -database "postgres://postgres:postgres@localhost:5432/gostartdb?sslmode=disable" up
+
+```
+
+### 3. Inicie a Aplicação
+
+Para rodar com hot-reload (Air):
+
+```bash
+air
+
+```
+
+Ou diretamente com Go / Makefile:
+
+```bash
+make run
+# ou
 go run cmd/api/main.go
+
 ```
 
 A API estará acessível em: **http://localhost:8000**
 
 ---
 
+## 🌱 Seed Inicial de Admin
+
+A aplicação conta com um inicializador em `internal/users/seed.go`. Ao iniciar a aplicação (`app.New()`):
+
+1. O sistema verifica se o e-mail configurado em `ADMIN_DEFAULT_EMAIL` já existe.
+2. Caso não exista, cria automaticamente a conta de administrador inicial com a role `admin`, utilizando a senha criptografada via Value Object `Password`.
+3. Se o usuário já estiver cadastrado, a rotina não realiza nenhuma alteração.
+
+---
+
 ## 🗃️ Migrations
 
-As migrations SQL ficam em `migrations/` (formato `up`/`down`). Elas criam a extensão `uuid-ossp`, a tabela `users` e a tabela `refresh_tokens`.
+As migrações SQL ficam na pasta `migrations/` no formato `up`/`down`:
 
-Aplique-as com a ferramenta [`golang-migrate`](https://github.com/golang-migrate/migrate):
+* `000001_create_users_table` (tabela de usuários e extensão uuid)
+* `000002_create_refresh_tokens_table` (sessões e refresh tokens)
+* `000003_create_rbac_tables` (roles e permissões)
+
+Comandos utilitários no `Makefile`:
 
 ```bash
-migrate -path migrations -database "postgres://postgres:postgres@localhost:5432/gostartdb?sslmode=disable" up
+make migrate-up      # Aplica todas as migrations pendentes
+make migrate-down    # Reverte a última migration
+
 ```
 
 ---
@@ -138,51 +214,62 @@ migrate -path migrations -database "postgres://postgres:postgres@localhost:5432/
 ### 🔐 Autenticação (`/api/auth`)
 
 | Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| `POST` | `/api/auth/register` | Cadastro de usuário (sempre role USER) | Público |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/register` | Cadastro de novo usuário (padrão role `user`) | Público |
 | `POST` | `/api/auth/login` | Autenticação e emissão de tokens | Público |
-| `POST` | `/api/auth/refresh` | Rotaciona a sessão (novo par de tokens) | Público* |
-| `POST` | `/api/auth/logout` | Invalida a sessão do usuário | JWT |
+| `POST` | `/api/auth/refresh` | Rotação de sessão (novo par de tokens) | Público* |
+| `POST` | `/api/auth/logout` | Invalida a sessão e revoga tokens | JWT |
 
-\* Requer um refresh token válido no corpo da requisição.
+* Requer refresh token válido no corpo da requisição.
 
 ### 👤 Usuários (`/api/users`)
 
 | Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| `GET` | `/api/users/me` | Perfil do usuário autenticado | JWT |
+| --- | --- | --- | --- |
+| `GET` | `/api/users/me` | Retorna o perfil do usuário autenticado | JWT |
 | `PUT` | `/api/users/me` | Atualiza o próprio perfil | JWT |
-| `DELETE` | `/api/users/me` | Desativa a própria conta (soft delete) | JWT |
-| `GET` | `/api/users` | Lista todos os usuários | ADMIN |
+| `DELETE` | `/api/users/me` | Desativa a conta do usuário (soft delete) | JWT |
+| `POST` | `/api/users` | Cria usuário com role customizada | ADMIN |
+| `GET` | `/api/users` | Lista todos os usuários cadastrados | ADMIN |
+| `PUT` | `/api/users/{id}` | Atualização de dados de usuário por ID | ADMIN |
+
+### 🛡️ Papéis & Permissões (`/api/roles`)
+
+| Método | Rota | Descrição | Acesso |
+| --- | --- | --- | --- |
+| `GET` | `/api/roles` | Lista todas as roles | ADMIN |
+| `POST` | `/api/roles` | Criação de novo papel/role | ADMIN |
+| `PUT` | `/api/roles/{id}` | Edição de papel existente | ADMIN |
 
 ---
 
 ## 🔄 Fluxo de Autenticação
 
-1. **Registro/Login** → o cliente recebe um `access_token` (curta duração) e um `refresh_token` (longa duração).
-2. **Requisições autenticadas** → enviar o header `Authorization: Bearer <access_token>`.
-3. **Expiração** → quando o `access_token` expira, use o `/api/auth/refresh` com o `refresh_token` para obter um novo par.
-4. **Rotação** → a cada refresh, o token antigo é **revogado** e um novo é emitido (segurança contra reuso).
-5. **Logout** → revoga **todos** os refresh tokens do usuário.
+1. **Login** $\rightarrow$ O cliente envia e-mail e senha e recebe um `access_token` (JWT) e um `refresh_token`.
+2. **Requisições Autenticadas** $\rightarrow$ Enviar header `Authorization: Bearer <access_token>`.
+3. **Expiração do Access Token** $\rightarrow$ Utilizar a rota `/api/auth/refresh` enviando o `refresh_token`.
+4. **Rotação de Refresh Tokens** $\rightarrow$ A cada refresh bem-sucedido, o token anterior é revogado e um novo par é gerado.
+5. **Logout** $\rightarrow$ Invalida os refresh tokens associados à sessão.
 
 ---
 
 ## 📖 Documentação Swagger
 
-A documentação é gerada a partir das annotations nos handlers. Para regenerar após alterações:
+A documentação da API é gerada automaticamente pelo Swag. Para atualizar após alterar annotations nos handlers:
 
 ```bash
-swag init -g cmd/api/main.go
+make swag
+# ou
+go run [github.com/swaggo/swag/cmd/swag@latest](https://github.com/swaggo/swag/cmd/swag@latest) init -g cmd/api/main.go
+
 ```
 
-Com a aplicação rodando, acesse a UI interativa em:
+Com o servidor rodando, acesse a UI interativa:
 
 **http://localhost:8000/swagger/index.html**
-
-> ⚠️ Os arquivos em `docs/` são **gerados automaticamente** — não os edite à mão.
 
 ---
 
 ## 📄 Licença
 
-Distribuído sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Distribuído sob a licença **MIT**. Veja o arquivo [LICENSE](https://www.google.com/search?q=LICENSE) para mais detalhes.
