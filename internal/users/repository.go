@@ -2,6 +2,7 @@
 package users
 
 import (
+	"context"
 	"errors"
 
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
@@ -10,12 +11,12 @@ import (
 )
 
 type UserRepository interface {
-	Create(user *domain.User) error
-	Update(user *domain.User) error
-	Delete(ui uuid.UUID) error
-	FindByEmail(email string) (*domain.User, error)
-	FindByID(ui uuid.UUID) (*domain.User, error)
-	ListAll() ([]domain.User, error)
+	Create(ctx context.Context, user *domain.User) error
+	Update(ctx context.Context, user *domain.User) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	FindByEmail(ctx context.Context, email string) (*domain.User, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	ListAll(ctx context.Context) ([]domain.User, error)
 }
 
 type userRepository struct {
@@ -26,15 +27,15 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 	return &userRepository{db: db}
 }
 
-func (r *userRepository) Create(user *domain.User) error {
+func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *userRepository) Update(user *domain.User) error {
+func (r *userRepository) Update(ctx context.Context, user *domain.User) error {
 	return r.db.Save(user).Error
 }
 
-func (r *userRepository) Delete(id uuid.UUID) error {
+func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	// Inicia uma transação. Se algo falhar, o banco sofre Rollback.
 	tx := r.db.Begin()
 
@@ -51,7 +52,7 @@ func (r *userRepository) Delete(id uuid.UUID) error {
 	return tx.Commit().Error
 }
 
-func (r *userRepository) FindByEmail(email string) (*domain.User, error) {
+func (r *userRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var user domain.User
 
 	err := r.db.Where("email = ?", email).First(&user).Error
@@ -64,7 +65,7 @@ func (r *userRepository) FindByEmail(email string) (*domain.User, error) {
 	return &user, nil
 }
 
-func (r *userRepository) FindByID(id uuid.UUID) (*domain.User, error) {
+func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	var user domain.User
 	err := r.db.First(&user, id).Error
 	if err != nil {
@@ -76,7 +77,7 @@ func (r *userRepository) FindByID(id uuid.UUID) (*domain.User, error) {
 	return &user, nil
 }
 
-func (r *userRepository) ListAll() ([]domain.User, error) {
+func (r *userRepository) ListAll(ctx context.Context) ([]domain.User, error) {
 	var users []domain.User
 	err := r.db.Find(&users).Error
 	return users, err

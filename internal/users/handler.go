@@ -39,7 +39,7 @@ func NewUserHandler(userService UserService) *UserHandler {
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	claims := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 
-	user, err := h.userService.GetUser(claims.UserID)
+	user, err := h.userService.GetUser(r.Context(), claims.UserID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
@@ -64,13 +64,58 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users [get]
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.userService.ListUsers()
+	users, err := h.userService.ListUsers(r.Context())
 	if err != nil {
 		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	platform.JSON(w, http.StatusOK, users)
+}
+
+// CreateUser create a new user as common user or admin.
+// @Summary      Criar um novo perfil do usuário
+// @Description  Cria um novo usuário para acesso ao sistema.
+// @Tags         Users
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        payload body domain.CreateUserRequest true "Campos para cadastrar novo usuário"
+// @Success      200  {object}  domain.User
+// @Failure      400  {object}  apiresponse.ErrorResponse
+// @Failure      401  {object}  apiresponse.ErrorResponse
+// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Router       /api/users [post]
+func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
+	if !ok || claims == nil {
+		platform.ErrorJSON(w, http.StatusUnauthorized, "Não autorizado")
+		return
+	}
+
+	var dto domain.CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, "Corpo da requisição inválido")
+		return
+	}
+
+	user, err := h.userService.CreateUserAsAdmin(r.Context(), claims.Role, dto)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrForbidden):
+			platform.ErrorJSON(w, http.StatusForbidden, "Acesso restrito para administradores")
+		case errors.Is(err, ErrEmailAlreadyExists):
+			platform.ErrorJSON(w, http.StatusConflict, err.Error()) // 409 Conflict é o padrão REST para duplicidade
+		case errors.Is(err, ErrInvalidRole):
+			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		default:
+			platform.ErrorJSON(w, http.StatusInternalServerError, "Erro interno do servidor")
+		}
+		return
+	}
+
+	// 4. Retorno 201 Created
+	platform.JSON(w, http.StatusCreated, user)
 }
 
 // UpdateUser atualiza os dados cadastrais do próprio usuário autenticado.
@@ -95,7 +140,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.userService.UpdateUser(claims.UserID, dto)
+	user, err := h.userService.UpdateUser(r.Context(), claims.UserID, dto)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
@@ -122,7 +167,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	claims := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 
-	err := h.userService.DeleteUser(claims.UserID)
+	err := h.userService.DeleteUser(r.Context(), claims.UserID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
@@ -144,6 +189,7 @@ func (h *UserHandler) Routes(cfg *config.Config, roleRepo roles.RoleRepository) 
 	// Protege todas as rotas da função com a exigência de token
 	r.Use(auth.AuthMiddleware(cfg))
 
+	r.Post("/", h.CreateUser)
 	r.Get("/me", h.GetUser)
 	r.Put("/me", h.UpdateUser)
 	r.Delete("/me", h.DeleteUser)

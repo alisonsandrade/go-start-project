@@ -2,10 +2,14 @@
 package users
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
+	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 var (
@@ -17,19 +21,25 @@ var (
 
 	// ErrEmailAlreadyExists indicates the email is already registered.
 	ErrEmailAlreadyExists = errors.New("email already exists")
+
+	ErrForbidden = errors.New("permissão insuficiente: requer perfil admin")
 )
 
 // UserService defines the contract for user-related business logic.
 type UserService interface {
-	GetUser(userID uuid.UUID) (*domain.User, error)
-	UpdateUser(userID uuid.UUID, dto domain.UpdateUserRequest) (*domain.User, error)
-	DeleteUser(userID uuid.UUID) error
+	GetUser(ctx context.Context, userID uuid.UUID) (*domain.User, error)
+	UpdateUser(ctx context.Context, userID uuid.UUID, dto domain.UpdateUserRequest) (*domain.User, error)
+	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
 	// --- Admin-exclusive methods ---
-	ListUsers() ([]domain.User, error)
-	GetUserByID(id uuid.UUID) (*domain.User, error)
-	UpdateUserAsAdmin(id uuid.UUID, dto domain.AdminUpdateUserRequest) error
-	DeleteUserAsAdmin(id uuid.UUID) error
+	ListUsers(ctx context.Context) ([]domain.User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	CreateUserAsAdmin(ctx context.Context, role string, dto domain.CreateUserRequest) (*domain.User, error)
+	UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto domain.AdminUpdateUserRequest) error
+	DeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error
+
+	// Seed
+	SeedDefaultAdmin(ctx context.Context, name, email, password string) error
 }
 
 type userService struct{ userRepo UserRepository }
@@ -41,8 +51,8 @@ func NewUserService(userRepo UserRepository) UserService {
 /*************************************************************************************************
 *								Services' Users
 *************************************************************************************************/
-func (s *userService) GetUser(userID uuid.UUID) (*domain.User, error) {
-	user, err := s.userRepo.FindByID(userID)
+func (s *userService) GetUser(ctx context.Context, userID uuid.UUID) (*domain.User, error) {
+	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +62,8 @@ func (s *userService) GetUser(userID uuid.UUID) (*domain.User, error) {
 	return user, nil
 }
 
-func (s *userService) UpdateUser(userID uuid.UUID, dto domain.UpdateUserRequest) (*domain.User, error) {
-	user, err := s.userRepo.FindByID(userID)
+func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, dto domain.UpdateUserRequest) (*domain.User, error) {
+	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,15 +88,15 @@ func (s *userService) UpdateUser(userID uuid.UUID, dto domain.UpdateUserRequest)
 		user.Bio = dto.Bio
 	}
 
-	if err := s.userRepo.Update(user); err != nil {
+	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, err
 	}
 
 	return user, nil
 }
 
-func (s *userService) DeleteUser(userID uuid.UUID) error {
-	user, err := s.userRepo.FindByID(userID)
+func (s *userService) DeleteUser(ctx context.Context, userID uuid.UUID) error {
+	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -94,26 +104,81 @@ func (s *userService) DeleteUser(userID uuid.UUID) error {
 		return ErrUserNotFound
 	}
 
-	return s.userRepo.Delete(userID)
+	return s.userRepo.Delete(ctx, userID)
 }
 
-func (s *userService) ListUsers() ([]domain.User, error) {
-	return s.userRepo.ListAll()
+func (s *userService) ListUsers(ctx context.Context) ([]domain.User, error) {
+	return s.userRepo.ListAll(ctx)
 }
 
 /*************************************************************************************************
 *							Services' Users for Admin
 *************************************************************************************************/
-func (s *userService) GetUserByID(id uuid.UUID) (*domain.User, error) {
-	user, err := s.userRepo.FindByID(id)
+func (s *userService) GetUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	user, err := s.userRepo.FindByID(ctx, id)
 	if err != nil || user == nil {
 		return nil, ErrUserNotFound
 	}
 	return user, nil
 }
 
-func (s *userService) UpdateUserAsAdmin(id uuid.UUID, dto domain.AdminUpdateUserRequest) error {
-	user, err := s.userRepo.FindByID(id)
+func (s *userService) CreateUserAsAdmin(
+	ctx context.Context,
+	requesterRole string,
+	userDTO domain.CreateUserRequest,
+) (*domain.User, error) {
+	if requesterRole != string(domain.RoleAdmin) {
+		return nil, ErrForbidden
+	}
+
+	email, err := pkgDomain.NewEmail(userDTO.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	existingUser, err := s.userRepo.FindByEmail(ctx, email.String())
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	if existingUser != nil {
+		return nil, ErrEmailAlreadyExists
+	}
+
+	password, err := pkgDomain.NewPassword(userDTO.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	role, err := domain.ParseRole(string(userDTO.Role))
+	if err != nil {
+		return nil, ErrInvalidRole
+	}
+
+	user := &domain.User{
+		Name:      userDTO.Name,
+		Email:     email,
+		Password:  password,
+		Role:      role,
+		Phone:     userDTO.Phone,
+		AvatarURL: userDTO.AvatarURL,
+		JobTitle:  userDTO.JobTitle,
+		Bio:       userDTO.Bio,
+		IsActive:  true,
+	}
+
+	fmt.Printf("user service: %v", user)
+	fmt.Print(domain.RoleUser)
+
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *userService) UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto domain.AdminUpdateUserRequest) error {
+	user, err := s.userRepo.FindByID(ctx, id)
 	if err != nil || user == nil {
 		return ErrUserNotFound
 	}
@@ -123,12 +188,21 @@ func (s *userService) UpdateUserAsAdmin(id uuid.UUID, dto domain.AdminUpdateUser
 	}
 
 	if dto.Email != nil {
-		if *dto.Email != user.Email {
-			existingUser, _ := s.userRepo.FindByEmail(*dto.Email)
+		if *dto.Email != user.Email.String() {
+			newEmail, err := pkgDomain.NewEmail(*dto.Email) // use o alias do seu pacote pkg/domain
+			if err != nil {
+				if errors.Is(err, pkgDomain.ErrInvalidEmail) {
+					return pkgDomain.ErrInvalidEmail
+				}
+				return err
+			}
+
+			existingUser, _ := s.userRepo.FindByEmail(ctx, newEmail.String())
 			if existingUser != nil {
 				return ErrEmailAlreadyExists
 			}
-			user.Email = *dto.Email
+
+			user.Email = newEmail
 		}
 	}
 
@@ -144,9 +218,9 @@ func (s *userService) UpdateUserAsAdmin(id uuid.UUID, dto domain.AdminUpdateUser
 		user.IsActive = *dto.IsActive
 	}
 
-	return s.userRepo.Update(user)
+	return s.userRepo.Update(ctx, user)
 }
 
-func (s *userService) DeleteUserAsAdmin(id uuid.UUID) error {
-	return s.userRepo.Delete(id)
+func (s *userService) DeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error {
+	return s.userRepo.Delete(ctx, id)
 }
