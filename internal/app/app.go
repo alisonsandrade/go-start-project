@@ -2,6 +2,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -60,6 +61,17 @@ func New() (*App, error) {
 	userService := users.NewUserService(userRepo)
 	roleService := roles.NewRoleService(roleRepo)
 
+	// --- SEED DO ADMIN INICIAL ---
+	ctx := context.Background()
+	if err := userService.SeedDefaultAdmin(
+		ctx,
+		cfg.AdminSeed.Name,
+		cfg.AdminSeed.Email,
+		cfg.AdminSeed.Password,
+	); err != nil {
+		log.Printf("⚠ Aviso: não foi possível executar a seed do admin: %v", err)
+	}
+
 	authHandler := auth.NewAuthHandler(authService)
 	userHandler := users.NewUserHandler(userService)
 	roleHandler := roles.NewRoleHandler(roleService)
@@ -73,7 +85,7 @@ func New() (*App, error) {
 
 	// Documentação Swagger
 	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:8000/swagger/doc.json"),
+		httpSwagger.URL(fmt.Sprintf("http://localhost:%s/swagger/doc.json", cfg.Port)),
 	))
 
 	return &App{

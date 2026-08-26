@@ -8,6 +8,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type AdminSeedConfig struct {
+	Name     string
+	Email    string
+	Password string
+}
+
 type Config struct {
 	Port               string
 	DBHost             string
@@ -18,6 +24,7 @@ type Config struct {
 	DBSSLMode          string
 	JWTSecret          string
 	JWTExpirationHours string
+	AdminSeed          AdminSeedConfig
 }
 
 func LoadConfig() (*Config, error) {
@@ -33,6 +40,11 @@ func LoadConfig() (*Config, error) {
 		DBSSLMode:          getEnv("DB_SSLMODE", "disable"),
 		JWTSecret:          getEnv("JWT_SECRET", "default_secret_key"),
 		JWTExpirationHours: getEnv("JWT_EXPIRATION_HOURS", "24"),
+		AdminSeed: AdminSeedConfig{
+			Name:     getEnv("ADMIN_DEFAULT_NAME", "Super Admin"),
+			Email:    getEnv("ADMIN_DEFAULT_EMAIL", "admin@sandrade.com"),
+			Password: getEnv("ADMIN_DEFAULT_PASSWORD", "Admin@123456"),
+		},
 	}
 
 	return cfg, nil
