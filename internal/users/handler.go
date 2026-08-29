@@ -4,6 +4,7 @@ package users
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/alisonsandrade/go-start-project/internal/auth"
@@ -13,6 +14,7 @@ import (
 	rolesDomain "github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
+	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
 )
@@ -81,12 +83,13 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        payload body domain.CreateUserRequest true "Campos para cadastrar novo usuário"
-// @Success      200  {object}  domain.User
+// @Success      201  {object}  domain.UserResponse
 // @Failure      400  {object}  apiresponse.ErrorResponse
 // @Failure      401  {object}  apiresponse.ErrorResponse
 // @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Entrou no CreateUser")
 	claims, ok := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 	if !ok || claims == nil {
 		platform.ErrorJSON(w, http.StatusUnauthorized, "Não autorizado")
@@ -95,11 +98,11 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	var dto domain.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "Corpo da requisição inválido")
+		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	user, err := h.userService.CreateUserAsAdmin(r.Context(), claims.Role, dto)
+	user, err := h.userService.CreateUserAsAdmin(r.Context(), dto)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrForbidden):
@@ -108,13 +111,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 			platform.ErrorJSON(w, http.StatusConflict, err.Error()) // 409 Conflict é o padrão REST para duplicidade
 		case errors.Is(err, ErrInvalidRole):
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, pkgDomain.ErrInvalidEmail):
+			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		default:
-			platform.ErrorJSON(w, http.StatusInternalServerError, "Erro interno do servidor")
+			platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	// 4. Retorno 201 Created
 	platform.JSON(w, http.StatusCreated, user)
 }
 

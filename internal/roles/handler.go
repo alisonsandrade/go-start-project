@@ -277,10 +277,9 @@ func (h *RoleHandler) Routes(cfg *config.Config, roleRepo RoleRepository) chi.Ro
 	r.Use(auth.AuthMiddleware(cfg))
 
 	r.Group(func(admin chi.Router) {
-		admin.Use(RequireRole(
-			// domain.RoleAdmin,
-			"admin", // Manter essa string enquanto não migro o users
-		))
+		admin.Use(
+			RequirePermission(roleRepo, domain.PermissionReadRole),
+		)
 
 		admin.Get("/", h.ListRoles)
 		admin.Get("/{id}", h.GetRoleByID)

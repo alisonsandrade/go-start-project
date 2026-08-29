@@ -60,10 +60,10 @@ func (s *authService) Register(ctx context.Context, dto domain.RegisterRequest) 
 	}
 
 	user := &usersDomain.User{
-		Name:      dto.Name,
-		Email:     email,
-		Password:  password,
-		Role:      usersDomain.RoleUser,
+		Name:     dto.Name,
+		Email:    email,
+		Password: password,
+		// Role:      usersDomain.RoleUser,
 		Phone:     dto.Phone,
 		AvatarURL: dto.AvatarURL,
 		JobTitle:  dto.JobTitle,
@@ -152,7 +152,7 @@ func (s *authService) generateAuthResponse(ctx context.Context, user *usersDomai
 	}
 
 	accessToken, err := token.GenerateToken(
-		user.ID, email.String(), string(user.Role), s.cfg.JWTSecret, expHours,
+		user.ID, email.String(), user.RoleID, s.cfg.JWTSecret, expHours,
 	)
 	if err != nil {
 		return nil, err

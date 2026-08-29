@@ -611,10 +611,10 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/domain.User"
+                            "$ref": "#/definitions/domain.UserResponse"
                         }
                     },
                     "400": {
@@ -831,28 +831,34 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "avatar_url": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "https://github.com/alisonsandrade/avatar.jpg"
                 },
                 "bio": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "This is my bio"
                 },
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "alison.andrade@email.com"
                 },
                 "job_title": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Software Engineer"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Alison Andrade"
                 },
                 "password": {
                     "type": "string"
                 },
                 "phone": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "75988632510"
                 },
-                "role": {
-                    "$ref": "#/definitions/domain.Role"
+                "role_id": {
+                    "type": "string"
                 }
             }
         },
@@ -920,8 +926,8 @@ const docTemplate = `{
                 "phone": {
                     "type": "string"
                 },
-                "role": {
-                    "$ref": "#/definitions/domain.Role"
+                "role_id": {
+                    "type": "string"
                 }
             }
         },
@@ -935,17 +941,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "domain.Role": {
-            "type": "string",
-            "enum": [
-                "ADMIN",
-                "USER"
-            ],
-            "x-enum-varnames": [
-                "RoleAdmin",
-                "RoleUser"
-            ]
         },
         "domain.RoleEntity": {
             "type": "object",
@@ -1048,9 +1043,44 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role": {
-                    "$ref": "#/definitions/domain.Role"
+                    "type": "object"
+                },
+                "role_id": {
+                    "type": "string",
+                    "format": "uuid"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "role_id": {
                     "type": "string"
                 }
             }

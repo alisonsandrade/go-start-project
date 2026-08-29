@@ -55,7 +55,10 @@ func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 func (r *userRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var user domain.User
 
-	err := r.db.Where("email = ?", email).First(&user).Error
+	err := r.db.
+		Preload("Role").
+		Where("email = ?", email).
+		First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -67,7 +70,9 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*domain
 
 func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	var user domain.User
-	err := r.db.First(&user, id).Error
+	err := r.db.
+		Preload("Role").
+		First(&user, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -79,6 +84,8 @@ func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Us
 
 func (r *userRepository) ListAll(ctx context.Context) ([]domain.User, error) {
 	var users []domain.User
-	err := r.db.Find(&users).Error
+	err := r.db.
+		Preload("Role").
+		Find(&users).Error
 	return users, err
 }

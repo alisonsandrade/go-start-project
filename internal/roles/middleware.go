@@ -3,14 +3,13 @@ package roles
 
 import (
 	"net/http"
-	"slices"
 
 	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
-	domainUser "github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 )
 
+/*
 func RequireRole(allowedRoles ...domainUser.Role) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +30,7 @@ func RequireRole(allowedRoles ...domainUser.Role) func(http.Handler) http.Handle
 		})
 	}
 }
+*/
 
 // RequirePermission ensures the authenticated user's role grants the given permission
 func RequirePermission(
@@ -45,7 +45,7 @@ func RequirePermission(
 				return
 			}
 
-			hasPermission, err := roleRepo.RoleHasPermission(claims.Role, permission)
+			hasPermission, err := roleRepo.RoleHasPermission(claims.RoleID, permission)
 			if err != nil {
 				http.Error(w, `{"error": "verified permission error"}`, http.StatusInternalServerError)
 				return

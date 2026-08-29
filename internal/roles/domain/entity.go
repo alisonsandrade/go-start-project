@@ -2,6 +2,7 @@
 package domain
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,6 +33,10 @@ func (RoleEntity) TableName() string {
 
 func (Permission) TableName() string {
 	return "permissions"
+}
+
+func NormalizeRoleName(name string) string {
+	return strings.ToUpper(strings.TrimSpace(name))
 }
 
 type PermissionCode string

@@ -58,7 +58,7 @@ func New() (*App, error) {
 	roleRepo := roles.NewRoleRepository(db)
 
 	authService := auth.NewAuthService(userRepo, tokenRepo, cfg)
-	userService := users.NewUserService(userRepo)
+	userService := users.NewUserService(userRepo, roleRepo)
 	roleService := roles.NewRoleService(roleRepo)
 
 	// --- SEED DO ADMIN INICIAL ---

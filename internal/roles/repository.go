@@ -9,7 +9,7 @@ import (
 
 // RoleRepository defines persistence operations for roles and permissions.
 type RoleRepository interface {
-	RoleHasPermission(roleName string, code domain.PermissionCode) (bool, error)
+	RoleHasPermission(roleID uuid.UUID, code domain.PermissionCode) (bool, error)
 
 	Create(role *domain.RoleEntity) error
 	GetByID(id uuid.UUID) (*domain.RoleEntity, error)
@@ -104,14 +104,14 @@ func (r *roleRepository) Delete(id uuid.UUID) error {
 }
 
 // RoleHasPermission reports wheter the role (by name) grants the permission (by code)
-func (r *roleRepository) RoleHasPermission(roleName string, code domain.PermissionCode) (bool, error) {
+func (r *roleRepository) RoleHasPermission(roleID uuid.UUID, code domain.PermissionCode) (bool, error) {
 	var count int64
 
 	err := r.db.
 		Table("role_permissions AS rp").
 		Joins("JOIN roles r ON r.id = rp.role_id").
 		Joins("JOIN permissions p ON p.id = rp.permission_id").
-		Where("r.name = ? AND p.code = ?", roleName, string(code)).
+		Where("r.id = ? AND p.code = ?", roleID, string(code)).
 		Count(&count).Error
 	if err != nil {
 		return false, err

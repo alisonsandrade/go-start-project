@@ -6,23 +6,23 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/alisonsandrade/go-start-project/internal/users/domain"
+	"github.com/google/uuid"
 )
 
 type RegisterRequest struct {
-	Name      string      `json:"name"`
-	Email     string      `json:"email"`
-	Password  string      `json:"password"`
-	Phone     string      `json:"phone"`
-	AvatarURL string      `json:"avatar_url"`
-	JobTitle  string      `json:"job_title"`
-	Bio       string      `json:"bio"`
-	Role      domain.Role `json:"role"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Password  string    `json:"password"`
+	Phone     string    `json:"phone"`
+	AvatarURL string    `json:"avatar_url"`
+	JobTitle  string    `json:"job_title"`
+	Bio       string    `json:"bio"`
+	RoleID    uuid.UUID `json:"role_id"`
 }
 
 type RegisterAdminRequest struct {
 	RegisterRequest
-	Role domain.Role `json:"role" example:"ADMIN"`
+	RoleID uuid.UUID `json:"role" example:"admin"`
 }
 
 type LoginRequest struct {

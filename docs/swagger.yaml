@@ -34,21 +34,27 @@ definitions:
   domain.CreateUserRequest:
     properties:
       avatar_url:
+        example: https://github.com/alisonsandrade/avatar.jpg
         type: string
       bio:
+        example: This is my bio
         type: string
       email:
+        example: alison.andrade@email.com
         type: string
       job_title:
+        example: Software Engineer
         type: string
       name:
+        example: Alison Andrade
         type: string
       password:
         type: string
       phone:
+        example: "75988632510"
         type: string
-      role:
-        $ref: '#/definitions/domain.Role'
+      role_id:
+        type: string
     type: object
   domain.LoginRequest:
     properties:
@@ -92,8 +98,8 @@ definitions:
         type: string
       phone:
         type: string
-      role:
-        $ref: '#/definitions/domain.Role'
+      role_id:
+        type: string
     type: object
   domain.ReplacePermissionsRequest:
     properties:
@@ -102,14 +108,6 @@ definitions:
           type: string
         type: array
     type: object
-  domain.Role:
-    enum:
-    - ADMIN
-    - USER
-    type: string
-    x-enum-varnames:
-    - RoleAdmin
-    - RoleUser
   domain.RoleEntity:
     properties:
       created_at:
@@ -179,8 +177,31 @@ definitions:
       phone:
         type: string
       role:
-        $ref: '#/definitions/domain.Role'
+        type: object
+      role_id:
+        format: uuid
+        type: string
       updated_at:
+        type: string
+    type: object
+  domain.UserResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      role:
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+        type: object
+      role_id:
         type: string
     type: object
 info:
@@ -571,10 +592,10 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/domain.User'
+            $ref: '#/definitions/domain.UserResponse'
         "400":
           description: Bad Request
           schema:

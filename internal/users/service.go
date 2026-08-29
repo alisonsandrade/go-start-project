@@ -4,8 +4,8 @@ package users
 import (
 	"context"
 	"errors"
-	"fmt"
 
+	"github.com/alisonsandrade/go-start-project/internal/roles"
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
 	"github.com/google/uuid"
@@ -22,6 +22,7 @@ var (
 	// ErrEmailAlreadyExists indicates the email is already registered.
 	ErrEmailAlreadyExists = errors.New("email already exists")
 
+	// ErrForbidden indicates not user permission
 	ErrForbidden = errors.New("permissão insuficiente: requer perfil admin")
 )
 
@@ -34,7 +35,7 @@ type UserService interface {
 	// --- Admin-exclusive methods ---
 	ListUsers(ctx context.Context) ([]domain.User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
-	CreateUserAsAdmin(ctx context.Context, role string, dto domain.CreateUserRequest) (*domain.User, error)
+	CreateUserAsAdmin(ctx context.Context, dto domain.CreateUserRequest) (*domain.User, error)
 	UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto domain.AdminUpdateUserRequest) error
 	DeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error
 
@@ -42,10 +43,13 @@ type UserService interface {
 	SeedDefaultAdmin(ctx context.Context, name, email, password string) error
 }
 
-type userService struct{ userRepo UserRepository }
+type userService struct {
+	userRepo UserRepository
+	roleRepo roles.RoleRepository
+}
 
-func NewUserService(userRepo UserRepository) UserService {
-	return &userService{userRepo: userRepo}
+func NewUserService(userRepo UserRepository, roleRepo roles.RoleRepository) UserService {
+	return &userService{userRepo: userRepo, roleRepo: roleRepo}
 }
 
 /*************************************************************************************************
@@ -124,16 +128,16 @@ func (s *userService) GetUserByID(ctx context.Context, id uuid.UUID) (*domain.Us
 
 func (s *userService) CreateUserAsAdmin(
 	ctx context.Context,
-	requesterRole string,
 	userDTO domain.CreateUserRequest,
 ) (*domain.User, error) {
-	if requesterRole != string(domain.RoleAdmin) {
-		return nil, ErrForbidden
-	}
-
 	email, err := pkgDomain.NewEmail(userDTO.Email)
 	if err != nil {
 		return nil, err
+	}
+
+	_, err = s.roleRepo.GetByID(userDTO.RoleID)
+	if err != nil {
+		return nil, ErrInvalidRole
 	}
 
 	existingUser, err := s.userRepo.FindByEmail(ctx, email.String())
@@ -150,25 +154,17 @@ func (s *userService) CreateUserAsAdmin(
 		return nil, err
 	}
 
-	role, err := domain.ParseRole(string(userDTO.Role))
-	if err != nil {
-		return nil, ErrInvalidRole
-	}
-
 	user := &domain.User{
 		Name:      userDTO.Name,
 		Email:     email,
 		Password:  password,
-		Role:      role,
+		RoleID:    userDTO.RoleID,
 		Phone:     userDTO.Phone,
 		AvatarURL: userDTO.AvatarURL,
 		JobTitle:  userDTO.JobTitle,
 		Bio:       userDTO.Bio,
 		IsActive:  true,
 	}
-
-	fmt.Printf("user service: %v", user)
-	fmt.Print(domain.RoleUser)
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, err
@@ -204,14 +200,6 @@ func (s *userService) UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto d
 
 			user.Email = newEmail
 		}
-	}
-
-	if dto.Role != nil {
-		roleStr := domain.Role(*dto.Role)
-		if roleStr != domain.RoleUser && roleStr != domain.RoleAdmin {
-			return ErrInvalidRole
-		}
-		user.Role = roleStr
 	}
 
 	if dto.IsActive != nil {

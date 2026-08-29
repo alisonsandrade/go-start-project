@@ -1,14 +1,16 @@
 // Package domain users dto.
 package domain
 
+import "github.com/google/uuid"
+
 // UserBase for interface
 type UserBase struct {
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	Phone     string `json:"phone"`
-	AvatarURL string `json:"avatar_url"`
-	JobTitle  string `json:"job_title"`
-	Bio       string `json:"bio"`
+	Name      string `json:"name" example:"Alison Andrade"`
+	Email     string `json:"email" example:"alison.andrade@email.com"`
+	Phone     string `json:"phone" example:"75988632510"`
+	AvatarURL string `json:"avatar_url" example:"https://github.com/alisonsandrade/avatar.jpg"`
+	JobTitle  string `json:"job_title" example:"Software Engineer"`
+	Bio       string `json:"bio" example:"This is my bio"`
 }
 
 type UpdateUserRequest struct {
@@ -19,24 +21,37 @@ type UpdateUserRequest struct {
 	Bio       string `json:"bio,omitempty" example:"Desenvolvedor Backend Go"`
 }
 
-// AdminCreateUserRequest represents the payload for an admin to create any user's data.
+// CreateUserRequest represents the payload for an admin to create any user's data.
 type CreateUserRequest struct {
 	UserBase
-	Password string `json:"password"`
-	Role     Role   `json:"role"`
+	Password string    `json:"password"`
+	RoleID   uuid.UUID `json:"role_id"`
 }
 
-// AdminCreateUserResponse represents the response admin to create new user.
+// CreateUserResponse represents the response admin to create new user.
 type CreateUserResponse struct {
 	UserBase
-	Role Role `json:"role"`
+	RoleID uuid.UUID `json:"role_id"`
 }
 
 // AdminUpdateUserRequest represents the payload for an admin to update any user's data.
 // Pointers are used to allow partial updates (PATCH behavior).
 type AdminUpdateUserRequest struct {
-	Name     *string `json:"name,omitempty"`
-	Email    *string `json:"email,omitempty"`
-	Role     *Role   `json:"role,omitempty"`
-	IsActive *bool   `json:"is_active,omitempty"`
+	Name     *string    `json:"name,omitempty"`
+	Email    *string    `json:"email,omitempty"`
+	RoleID   *uuid.UUID `json:"role_id,omitempty"`
+	IsActive *bool      `json:"is_active,omitempty"`
+}
+
+type UserResponse struct {
+	ID     uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Email  string    `json:"email"`
+	Phone  string    `json:"phone"`
+	RoleID uuid.UUID `json:"role_id"`
+
+	Role struct {
+		ID   uuid.UUID `json:"id"`
+		Name string    `json:"name"`
+	} `json:"role"`
 }
