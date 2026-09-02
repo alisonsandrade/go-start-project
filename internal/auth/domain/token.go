@@ -4,7 +4,6 @@ package domain
 import (
 	"time"
 
-	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/google/uuid"
 )
 
@@ -14,14 +13,4 @@ type RefreshToken struct {
 	Token     string    `gorm:"size:512;uniqueIndex;not null" json:"token"`
 	ExpiresAt time.Time `gorm:"not null" json:"expires_at"`
 	CreatedAt time.Time `json:"created_at"`
-}
-
-type RefreshTokenDTO struct {
-	RefreshToken string `json:"refresh_token" binding:"required" example:"dGhpcy1pcy1hLXJlZnJlc2gtdG9rZW4..."`
-}
-
-type AuthResponseDTO struct {
-	AccessToken  string      `json:"access_token"`
-	RefreshToken string      `json:"refresh_token"`
-	User         domain.User `json:"user"`
 }

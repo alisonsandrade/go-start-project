@@ -152,6 +152,113 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ForgotPassword solicita o link de recuperação de senha.
+// @Summary      Request password reset
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      domain.ForgotPasswordDTO  true  "Email"
+// @Success      200      {object}  apiresponse.MessageResponse
+// @Failure      400      {object}  apiresponse.ErrorResponse
+// @Router       /api/auth/forgot-password [post]
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var dto domain.ForgotPasswordDTO
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	err := h.authService.ForgotPassword(r.Context(), dto.Email)
+	if err != nil {
+		platform.ErrorJSON(w, http.StatusInternalServerError, "failed to process request")
+		return
+	}
+
+	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
+		Message: "If the email is registered, you will receive a reset link shortly.",
+	})
+}
+
+// ResetPassword redefine a senha usando o token.
+// @Summary      Reset password
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      domain.ResetPasswordDTO  true  "Token and new password"
+// @Success      200      {object}  apiresponse.MessageResponse
+// @Failure      400      {object}  apiresponse.ErrorResponse
+// @Router       /api/auth/reset-password [post]
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var dto domain.ResetPasswordDTO
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	err := h.authService.ResetPassword(r.Context(), dto.Token, dto.NewPassword)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrResetTokenInvalid):
+			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, ErrResetTokenExpired):
+			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		// Captura regras do pacote de domínio (ex: tamanho mínimo da senha)
+		default:
+			// Se o err vier do pkgDomain.NewPassword, ele cai aqui com status 400
+			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		}
+		return
+	}
+
+	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
+		Message: "Password has been reset successfully.",
+	})
+}
+
+// ChangePassword altera a senha do usuário autenticado.
+// @Summary      Change password
+// @Description  Altera a senha do usuário autenticado exigindo a confirmação da senha atual
+// @Tags         Auth
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      domain.ChangePasswordDTO  true  "Current and new password"
+// @Success      200      {object}  apiresponse.MessageResponse
+// @Failure      400      {object}  apiresponse.ErrorResponse
+// @Failure      401      {object}  apiresponse.ErrorResponse
+// @Failure      500      {object}  apiresponse.ErrorResponse
+// @Router       /api/auth/change-password [post]
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	// 1. Extrai as claims injetadas pelo AuthMiddleware
+	claims, ok := r.Context().Value(UserClaimsKey).(*token.CustomClaims)
+	if !ok || claims == nil {
+		platform.ErrorJSON(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+
+	var dto domain.ChangePasswordDTO
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	// 2. Executa a troca
+	err := h.authService.ChangePassword(r.Context(), claims.UserID, dto)
+	if err != nil {
+		if errors.Is(err, ErrCurrentPasswordIncorrect) {
+			platform.ErrorJSON(w, http.StatusUnauthorized, err.Error())
+			return
+		}
+		// Trata erros de validação da nova senha (ex: fraca ou curta)
+		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
+		Message: "password changed successfully",
+	})
+}
+
 // AuthRoutes returns the router with the authentication endpoints.
 func (h *AuthHandler) AuthRoutes(cfg *config.Config) chi.Router {
 	r := chi.NewRouter()
@@ -160,11 +267,14 @@ func (h *AuthHandler) AuthRoutes(cfg *config.Config) chi.Router {
 	r.Post("/register", h.Register)
 	r.Post("/login", h.Login)
 	r.Post("/refresh", h.RefreshToken)
+	r.Post("/forgot-password", h.ForgotPassword)
+	r.Post("/reset-password", h.ResetPassword)
 
 	// Protected route (requires a valid JWT)
 	r.Group(func(protected chi.Router) {
 		protected.Use(AuthMiddleware(cfg))
 		protected.Post("/logout", h.Logout)
+		protected.Post("/change-password", h.ChangePassword)
 	})
 
 	return r

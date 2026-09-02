@@ -3,6 +3,7 @@ package auth
 
 import (
 	"context"
+	"log"
 	"strconv"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/config"
 	usersDomain "github.com/alisonsandrade/go-start-project/internal/users/domain"
 	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/mailer"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/google/uuid"
 )
@@ -19,23 +21,29 @@ type AuthService interface {
 	Login(ctx context.Context, dto domain.LoginRequest) (*domain.AuthResponseDTO, error)
 	RefreshSession(ctx context.Context, refreshToken string) (*domain.AuthResponseDTO, error)
 	Logout(ctx context.Context, userID uuid.UUID) error
+	ForgotPassword(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, token string, newPassword string) error
+	ChangePassword(ctx context.Context, userID uuid.UUID, dto domain.ChangePasswordDTO) error
 }
 
 type authService struct {
 	userRepo  UserRepository
 	tokenRepo TokenRepository
 	cfg       *config.Config
+	mailer    mailer.Mailer
 }
 
 func NewAuthService(
 	userRepo UserRepository,
 	tokenRepo TokenRepository,
 	cfg *config.Config,
+	mailer mailer.Mailer,
 ) AuthService {
 	return &authService{
 		userRepo:  userRepo,
 		tokenRepo: tokenRepo,
 		cfg:       cfg,
+		mailer:    mailer,
 	}
 }
 
@@ -182,4 +190,101 @@ func (s *authService) generateAuthResponse(ctx context.Context, user *usersDomai
 		RefreshToken: refreshTokenStr,
 		User:         *user,
 	}, nil
+}
+
+// ForgotPassword return a code for user autenticated again on system
+func (s *authService) ForgotPassword(ctx context.Context, email string) error {
+	user, err := s.userRepo.FindByEmail(ctx, email)
+	if err != nil || user == nil {
+		return nil
+	}
+
+	rawToken, err := token.GenerateSecureToken()
+	if err != nil {
+		return err
+	}
+
+	// Cria a entidade do seu domínio usando a struct que você já tem
+	resetToken := &domain.RefreshToken{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		Token:     rawToken,
+		ExpiresAt: time.Now().UTC().Add(15 * time.Minute),
+	}
+
+	if err := s.tokenRepo.Create(ctx, resetToken); err != nil {
+		return err
+	}
+
+	if err := s.mailer.SendPasswordReset(context.Background(), user.Email.String(), resetToken.Token); err != nil {
+		log.Printf("Falha ao enfileirar e-mail: %v", err)
+	}
+
+	return nil
+}
+
+// ResetPassword validates the token, updates the password and revokes all active sessions.
+func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNewPassword string) error {
+	resetToken, err := s.tokenRepo.FindByToken(ctx, rawToken)
+	if err != nil || resetToken == nil {
+		return ErrResetTokenInvalid
+	}
+
+	if time.Now().UTC().After(resetToken.ExpiresAt) {
+		return ErrResetTokenExpired
+	}
+
+	newPassword, err := pkgDomain.NewPassword(rawNewPassword)
+	if err != nil {
+		return err
+	}
+
+	user, err := s.userRepo.FindByID(ctx, resetToken.UserID)
+	if err != nil || user == nil {
+		return ErrResetTokenInvalid
+	}
+
+	user.Password = newPassword
+
+	// save new password the user
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	// Revokes all tokens that user logged
+	if err := s.tokenRepo.DeleteByUserID(ctx, resetToken.UserID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *authService) ChangePassword(ctx context.Context, userID uuid.UUID, dto domain.ChangePasswordDTO) error {
+	// 1. Busca o usuário pelo ID vindo das claims do token JWT
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil || user == nil {
+		return ErrInvalidCredentials
+	}
+
+	// 2. Valida se a senha atual confere usando a comparação do Value Object
+	if err := user.Password.Compare(dto.CurrentPassword); err != nil {
+		return ErrCurrentPasswordIncorrect
+	}
+
+	// 3. Cria o Value Object da nova senha (valida regras de tamanho e gera hash)
+	newPassword, err := pkgDomain.NewPassword(dto.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	// 4. Atualiza o usuário
+	user.Password = newPassword
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	// 5. Boa prática de segurança: revoga os refresh tokens existentes para deslogar outras sessões
+	_ = s.tokenRepo.DeleteByUserID(ctx, userID)
+
+	return nil
 }
