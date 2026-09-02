@@ -29,15 +29,15 @@ var (
 // UserService defines the contract for user-related business logic.
 type UserService interface {
 	GetUser(ctx context.Context, userID uuid.UUID) (*domain.User, error)
+	GetDefaultRoleID(ctx context.Context) (uuid.UUID, error)
 	UpdateUser(ctx context.Context, userID uuid.UUID, dto domain.UpdateUserRequest) (*domain.User, error)
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
 	// --- Admin-exclusive methods ---
 	ListUsers(ctx context.Context) ([]domain.User, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
 	CreateUserAsAdmin(ctx context.Context, dto domain.CreateUserRequest) (*domain.User, error)
 	UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto domain.AdminUpdateUserRequest) error
-	DeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error
+	SoftDeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error
 
 	// Seed
 	SeedDefaultAdmin(ctx context.Context, name, email, password string) error
@@ -64,6 +64,10 @@ func (s *userService) GetUser(ctx context.Context, userID uuid.UUID) (*domain.Us
 		return nil, ErrUserNotFound
 	}
 	return user, nil
+}
+
+func (s *userService) GetDefaultRoleID(ctx context.Context) (uuid.UUID, error) {
+	return s.userRepo.GetDefaultRoleID(ctx)
 }
 
 func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, dto domain.UpdateUserRequest) (*domain.User, error) {
@@ -118,14 +122,6 @@ func (s *userService) ListUsers(ctx context.Context) ([]domain.User, error) {
 /*************************************************************************************************
 *							Services' Users for Admin
 *************************************************************************************************/
-func (s *userService) GetUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
-	user, err := s.userRepo.FindByID(ctx, id)
-	if err != nil || user == nil {
-		return nil, ErrUserNotFound
-	}
-	return user, nil
-}
-
 func (s *userService) CreateUserAsAdmin(
 	ctx context.Context,
 	userDTO domain.CreateUserRequest,
@@ -209,6 +205,6 @@ func (s *userService) UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto d
 	return s.userRepo.Update(ctx, user)
 }
 
-func (s *userService) DeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error {
+func (s *userService) SoftDeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error {
 	return s.userRepo.Delete(ctx, id)
 }
