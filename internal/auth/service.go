@@ -59,11 +59,16 @@ func (s *authService) Register(ctx context.Context, dto domain.RegisterRequest) 
 		return nil, err
 	}
 
+	userRoleDefaultID, err := s.userRepo.GetDefaultRoleID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	user := &usersDomain.User{
-		Name:     dto.Name,
-		Email:    email,
-		Password: password,
-		// Role:      usersDomain.RoleUser,
+		Name:      dto.Name,
+		Email:     email,
+		Password:  password,
+		RoleID:    userRoleDefaultID,
 		Phone:     dto.Phone,
 		AvatarURL: dto.AvatarURL,
 		JobTitle:  dto.JobTitle,

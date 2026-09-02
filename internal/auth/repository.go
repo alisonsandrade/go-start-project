@@ -14,6 +14,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *usersDomain.User) error
 	FindByEmail(ctx context.Context, email string) (*usersDomain.User, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*usersDomain.User, error)
+	GetDefaultRoleID(ctx context.Context) (uuid.UUID, error)
 }
 
 type TokenRepository interface {
