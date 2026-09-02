@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	_ "github.com/alisonsandrade/go-start-project/docs"
+	"github.com/alisonsandrade/go-start-project/pkg/mailer"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	"github.com/go-chi/chi/v5"
@@ -26,6 +27,7 @@ type App struct {
 	Config *config.Config
 	DB     *gorm.DB
 	Router *chi.Mux
+	Mailer mailer.Mailer
 }
 
 func New() (*App, error) {
@@ -52,12 +54,15 @@ func New() (*App, error) {
 		AllowCredentials: true,
 	}))
 
+	// Inicializa o serviço de e-mail
+	emailService := mailer.NewWorkerMailer(3, 100)
+
 	// 4. Dependency wiring
 	userRepo := users.NewUserRepository(db)
 	tokenRepo := auth.NewTokenRepository(db)
 	roleRepo := roles.NewRoleRepository(db)
 
-	authService := auth.NewAuthService(userRepo, tokenRepo, cfg)
+	authService := auth.NewAuthService(userRepo, tokenRepo, cfg, emailService)
 	userService := users.NewUserService(userRepo, roleRepo)
 	roleService := roles.NewRoleService(roleRepo)
 
@@ -92,7 +97,15 @@ func New() (*App, error) {
 		Config: cfg,
 		DB:     db,
 		Router: r,
+		Mailer: emailService,
 	}, nil
+}
+
+func (a *App) Stop() {
+	if a.Mailer != nil {
+		log.Println("Encerrando serviço de e-mail...")
+		_ = a.Mailer.Close()
+	}
 }
 
 // Run inicia o servidor HTTP

@@ -21,6 +21,9 @@ func main() {
 		log.Fatalf("Erro ao inicializar a aplicação: %v", err)
 	}
 
+	// Se a aplicação for finalizada finalizará o serviço de e-mail também
+	defer application.Stop()
+
 	// Sobe o servidor HTTP
 	if err := application.Run(); err != nil {
 		log.Fatalf("Erro na execução do servidor: %v", err)
