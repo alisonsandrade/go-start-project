@@ -20,6 +20,17 @@ definitions:
       user:
         $ref: '#/definitions/domain.User'
     type: object
+  domain.ChangePasswordDTO:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        minLength: 8
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
   domain.CreateRoleRequest:
     properties:
       description:
@@ -55,6 +66,13 @@ definitions:
         type: string
       role_id:
         type: string
+    type: object
+  domain.ForgotPasswordDTO:
+    properties:
+      email:
+        type: string
+    required:
+    - email
     type: object
   domain.LoginRequest:
     properties:
@@ -115,6 +133,17 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  domain.ResetPasswordDTO:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+      token:
+        type: string
+    required:
+    - new_password
+    - token
     type: object
   domain.RoleEntity:
     properties:
@@ -218,6 +247,68 @@ info:
   title: Go Start API
   version: "1.0"
 paths:
+  /api/auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Altera a senha do usuário autenticado exigindo a confirmação da
+        senha atual
+      parameters:
+      - description: Current and new password
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.ChangePasswordDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apiresponse.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - Auth
+  /api/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Email
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.ForgotPasswordDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apiresponse.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      summary: Request password reset
+      tags:
+      - Auth
   /api/auth/login:
     post:
       consumes:
@@ -340,6 +431,31 @@ paths:
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
       summary: Public user registration
+      tags:
+      - Auth
+  /api/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Token and new password
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.ResetPasswordDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apiresponse.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      summary: Reset password
       tags:
       - Auth
   /api/roles:
