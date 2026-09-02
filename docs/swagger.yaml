@@ -85,20 +85,28 @@ definitions:
   domain.RegisterRequest:
     properties:
       avatar_url:
+        example: https://github.com/antonio.silva/avatar.jpg
         type: string
       bio:
+        example: Minha bio
         type: string
       email:
+        example: antonio.silva@email.com
         type: string
       job_title:
+        example: Desenvolvedor Backend Go
         type: string
       name:
+        example: Antônio Silva
         type: string
       password:
+        example: senha123!
         type: string
       phone:
+        example: "75988094321"
         type: string
       role_id:
+        example: 216aaf06-34b6-3d26-8866-ad2f94babeea
         type: string
     type: object
   domain.ReplacePermissionsRequest:
@@ -613,6 +621,111 @@ paths:
       summary: Criar um novo perfil do usuário
       tags:
       - Users
+  /api/users/{id}:
+    delete:
+      description: Deletes a logical user from the system
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apiresponse.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Soft delete perfil user by ID
+      tags:
+      - Admin
+    get:
+      description: Retorna os detalhes do usuário por ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Obter perfil do usuário
+      tags:
+      - Admin
+    put:
+      consumes:
+      - application/json
+      description: Update specific user's data by ID from admin user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields for udpate
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update perfil user
+      tags:
+      - Admin
   /api/users/me:
     delete:
       description: Realiza a exclusão lógica do usuário autenticado no sistema

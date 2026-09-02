@@ -47,8 +47,7 @@ build: ## Compila o binario em ./bin
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
 dev: ## Executa o live reload forçando o caminho correto
-	## air --build.cmd "go build -o ./tmp/main.exe ./cmd/api" --build.bin "tmp/main.exe"
-	air
+	air --build.cmd "go build -o ./tmp/main.exe ./cmd/api" --build.bin "tmp/main.exe"
 
 clean: ## Remove artefatos de build
 	rm -rf bin/
