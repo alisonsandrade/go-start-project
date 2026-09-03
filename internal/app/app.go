@@ -3,9 +3,14 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "github.com/alisonsandrade/go-start-project/docs"
 	"github.com/alisonsandrade/go-start-project/pkg/mailer"
@@ -16,6 +21,7 @@ import (
 	"github.com/go-chi/cors"
 	"gorm.io/gorm"
 
+	"github.com/alisonsandrade/go-start-project/internal/audit"
 	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/config"
 	"github.com/alisonsandrade/go-start-project/internal/platform/database"
@@ -54,13 +60,17 @@ func New() (*App, error) {
 		AllowCredentials: true,
 	}))
 
-	// Inicializa o serviço de e-mail
-	emailService := mailer.NewWorkerMailer(3, 100)
-
 	// 4. Dependency wiring
+	auditRepo := audit.NewRepository(db)
 	userRepo := users.NewUserRepository(db)
 	tokenRepo := auth.NewTokenRepository(db)
 	roleRepo := roles.NewRoleRepository(db)
+
+	// Registra o middleware de auditoria antes das rotas
+	r.Use(audit.Middleware(auditRepo, cfg.JWTSecret))
+
+	// Inicializa o serviço de e-mail
+	emailService := mailer.NewWorkerMailer(3, 100)
 
 	authService := auth.NewAuthService(userRepo, tokenRepo, cfg, emailService)
 	userService := users.NewUserService(userRepo, roleRepo)
@@ -109,8 +119,46 @@ func (a *App) Stop() {
 }
 
 // Run inicia o servidor HTTP
+// Run inicia o servidor HTTP com suporte a Graceful Shutdown
 func (a *App) Run() error {
 	addr := fmt.Sprintf(":%s", a.Config.Port)
-	log.Printf("🚀 Servidor Go rodando em http://localhost%s", addr)
-	return http.ListenAndServe(addr, a.Router)
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: a.Router,
+	}
+
+	// Canal para interceptar sinais de encerramento do SO / Air
+	shutdownChan := make(chan os.Signal, 1)
+	signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
+
+	// Canal de erro para capturar falhas na inicialização do servidor
+	serverErrChan := make(chan error, 1)
+
+	go func() {
+		log.Printf("🚀 Servidor Go rodando em http://localhost%s", addr)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErrChan <- err
+		}
+	}()
+
+	// Aguarda ou um erro no servidor ou o sinal de encerramento
+	select {
+	case err := <-serverErrChan:
+		return fmt.Errorf("falha ao iniciar servidor HTTP: %w", err)
+
+	case sig := <-shutdownChan:
+		log.Printf("Sinal recebido (%s). Encerrando servidor e liberando porta...", sig)
+
+		// Cria contexto com timeout de 5 segundos para liberar os sockets abertos
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("Aviso: Forçando fechamento do servidor: %v", err)
+			_ = server.Close()
+		}
+	}
+
+	return nil
 }
