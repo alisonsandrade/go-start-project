@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
 	"github.com/alisonsandrade/go-start-project/internal/config"
@@ -263,9 +264,15 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) AuthRoutes(cfg *config.Config) chi.Router {
 	r := chi.NewRouter()
 
+	// Strict rate limiter for login/reset: 5 requests per minute per IP
+	authRateLimit := platform.RateLimiter(5, time.Minute)
+
+	// Moderate rate limiter for registration: 10 requests per minute per IP
+	registerRateLimit := platform.RateLimiter(10, time.Minute)
+
 	// Public routes
-	r.Post("/register", h.Register)
-	r.Post("/login", h.Login)
+	r.With(registerRateLimit).Post("/register", h.Register)
+	r.With(authRateLimit).Post("/login", h.Login)
 	r.Post("/refresh", h.RefreshToken)
 	r.Post("/forgot-password", h.ForgotPassword)
 	r.Post("/reset-password", h.ResetPassword)
