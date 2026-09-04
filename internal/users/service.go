@@ -8,6 +8,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/roles"
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -34,7 +35,7 @@ type UserService interface {
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
 	// --- Admin-exclusive methods ---
-	ListUsers(ctx context.Context) ([]domain.User, error)
+	ListUsers(ctx context.Context, params pagination.Params) (pagination.PageResult[domain.User], error)
 	CreateUserAsAdmin(ctx context.Context, dto domain.CreateUserRequest) (*domain.User, error)
 	UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto domain.AdminUpdateUserRequest) error
 	SoftDeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error
@@ -115,8 +116,16 @@ func (s *userService) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	return s.userRepo.Delete(ctx, userID)
 }
 
-func (s *userService) ListUsers(ctx context.Context) ([]domain.User, error) {
-	return s.userRepo.ListAll(ctx)
+func (s *userService) ListUsers(
+	ctx context.Context,
+	params pagination.Params,
+) (pagination.PageResult[domain.User], error) {
+	users, total, err := s.userRepo.List(ctx, params.Limit, params.Offset())
+	if err != nil {
+		return pagination.PageResult[domain.User]{}, err
+	}
+
+	return pagination.NewPageResult(users, total, params), nil
 }
 
 /*************************************************************************************************

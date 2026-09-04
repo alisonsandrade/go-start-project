@@ -336,22 +336,45 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all roles registered in the system",
+                "description": "Retorna lista de perfis do sistema com paginação",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Roles"
+                    "Admin"
                 ],
-                "summary": "List roles",
+                "summary": "Listar papéis paginados (RBAC - ADMIN)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Número da página (padrão: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Itens por página (padrão: 10, máx: 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.RoleEntity"
-                            }
+                            "$ref": "#/definitions/domain.RolePageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "500": {
@@ -671,22 +694,33 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retorna lista de todos os usuários cadastrados. Acesso restrito a ADMIN.",
+                "description": "Retorna lista paginada de usuários cadastrados. Acesso restrito a ADMIN.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Admin"
                 ],
-                "summary": "Listar todos os usuários (RBAC - ADMIN)",
+                "summary": "Listar usuários paginados (RBAC - ADMIN)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Número da página (padrão: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Itens por página (padrão: 10, máx: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.User"
-                            }
+                            "$ref": "#/definitions/domain.UserPageResponse"
                         }
                     },
                     "401": {
@@ -1313,6 +1347,20 @@
                 }
             }
         },
+        "domain.RolePageResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.RoleEntity"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/pagination.Meta"
+                }
+            }
+        },
         "domain.UpdateRoleRequest": {
             "type": "object",
             "required": [
@@ -1396,6 +1444,20 @@
                 }
             }
         },
+        "domain.UserPageResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.User"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/pagination.Meta"
+                }
+            }
+        },
         "domain.UserResponse": {
             "type": "object",
             "properties": {
@@ -1424,6 +1486,23 @@
                 },
                 "role_id": {
                     "type": "string"
+                }
+            }
+        },
+        "pagination.Meta": {
+            "type": "object",
+            "properties": {
+                "current_page": {
+                    "type": "integer"
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "total_items": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
                 }
             }
         }

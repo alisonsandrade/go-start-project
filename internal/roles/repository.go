@@ -2,6 +2,8 @@
 package roles
 
 import (
+	"context"
+
 	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -14,7 +16,7 @@ type RoleRepository interface {
 	Create(role *domain.RoleEntity) error
 	GetByID(id uuid.UUID) (*domain.RoleEntity, error)
 	GetByName(name string) (*domain.RoleEntity, error)
-	List() ([]domain.RoleEntity, error)
+	List(ctx context.Context, limit, offset int) ([]domain.RoleEntity, int64, error)
 	Update(role *domain.RoleEntity) error
 	Delete(id uuid.UUID) error
 
@@ -71,18 +73,26 @@ func (r *roleRepository) GetByName(name string) (*domain.RoleEntity, error) {
 }
 
 // List returns all roles with their permissions eagerly loaded.
-func (r *roleRepository) List() ([]domain.RoleEntity, error) {
+func (r *roleRepository) List(ctx context.Context, limit, offset int) ([]domain.RoleEntity, int64, error) {
 	var roles []domain.RoleEntity
+	var total int64
 
-	err := r.db.
-		Preload("Permissions").
-		Order("name ASC").
-		Find(&roles).Error
-	if err != nil {
-		return nil, err
+	if err := r.db.WithContext(ctx).Model(&domain.RoleEntity{}).Count(&total).Error; err != nil {
+		return nil, 0, err
 	}
 
-	return roles, nil
+	err := r.db.
+		WithContext(ctx).
+		Preload("Permissions").
+		Order("name ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&roles).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return roles, total, err
 }
 
 // Update persists changes to an existing role.

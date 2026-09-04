@@ -11,6 +11,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/platform"
 	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
+	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -26,18 +27,24 @@ func NewRoleHandler(roleService RoleService) *RoleHandler {
 }
 
 // ListRoles lists all roles.
-// @Summary      List roles
-// @Description  Returns all roles registered in the system
-// @Tags         Roles
+// @Summary      Listar papéis paginados (RBAC - ADMIN)
+// @Description  Retorna lista de perfis do sistema com paginação
+// @Tags         Admin
 // @Security     BearerAuth
 // @Produce      json
-// @Success      200  {array}   domain.RoleEntity
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Param        page  query    int  false  "Número da página (padrão: 1)"
+// @Param        limit query    int  false  "Itens por página (padrão: 10, máx: 50)"
+// @Success      200   {object} domain.RolePageResponse
+// @Failure      401   {object} apiresponse.ErrorResponse
+// @Failure      403   {object} apiresponse.ErrorResponse
+// @Failure      500   {object} apiresponse.ErrorResponse
 // @Router       /api/roles [get]
 func (h *RoleHandler) ListRoles(w http.ResponseWriter, r *http.Request) {
-	roles, err := h.roleService.List()
+	params := pagination.ExtractParams(r, 10, 50)
+
+	roles, err := h.roleService.List(r.Context(), params)
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorJSON(w, http.StatusInternalServerError, "erro ao listar perfis")
 		return
 	}
 

@@ -2,9 +2,11 @@
 package roles
 
 import (
+	"context"
 	"errors"
 
 	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -13,7 +15,7 @@ import (
 type RoleService interface {
 	Create(role *domain.RoleEntity) (*domain.RoleEntity, error)
 	GetByID(id uuid.UUID) (*domain.RoleEntity, error)
-	List() ([]domain.RoleEntity, error)
+	List(ctx context.Context, params pagination.Params) (pagination.PageResult[domain.RoleEntity], error)
 	Update(role *domain.RoleEntity) (*domain.RoleEntity, error)
 	Delete(id uuid.UUID) error
 
@@ -70,8 +72,12 @@ func (s *roleService) GetByID(id uuid.UUID) (*domain.RoleEntity, error) {
 }
 
 // List returns all roles
-func (s *roleService) List() ([]domain.RoleEntity, error) {
-	return s.repo.List()
+func (s *roleService) List(ctx context.Context, params pagination.Params) (pagination.PageResult[domain.RoleEntity], error) {
+	roles, total, err := s.repo.List(ctx, params.Limit, params.Offset())
+	if err != nil {
+		return pagination.PageResult[domain.RoleEntity]{}, err
+	}
+	return pagination.NewPageResult(roles, total, params), nil
 }
 
 // Update updates an existing role.

@@ -18,7 +18,7 @@ type UserRepository interface {
 	GetDefaultRoleID(ctx context.Context) (uuid.UUID, error)
 	FindByEmail(ctx context.Context, email string) (*domain.User, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
-	ListAll(ctx context.Context) ([]domain.User, error)
+	List(ctx context.Context, limit, offset int) ([]domain.User, int64, error)
 }
 
 type userRepository struct {
@@ -100,11 +100,20 @@ func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Us
 	return &user, nil
 }
 
-func (r *userRepository) ListAll(ctx context.Context) ([]domain.User, error) {
+func (r *userRepository) List(ctx context.Context, limit, offset int) ([]domain.User, int64, error) {
 	var users []domain.User
+	var total int64
+
+	if err := r.db.WithContext(ctx).Model(&domain.User{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
 	err := r.db.
 		WithContext(ctx).
 		Preload("Role").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
 		Find(&users).Error
-	return users, err
+	return users, total, err
 }

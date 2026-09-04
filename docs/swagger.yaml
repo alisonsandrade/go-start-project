@@ -164,6 +164,15 @@ definitions:
       updated_at:
         type: string
     type: object
+  domain.RolePageResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.RoleEntity'
+        type: array
+      meta:
+        $ref: '#/definitions/pagination.Meta'
+    type: object
   domain.UpdateRoleRequest:
     properties:
       description:
@@ -221,6 +230,15 @@ definitions:
       updated_at:
         type: string
     type: object
+  domain.UserPageResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.User'
+        type: array
+      meta:
+        $ref: '#/definitions/pagination.Meta'
+    type: object
   domain.UserResponse:
     properties:
       email:
@@ -240,6 +258,17 @@ definitions:
         type: object
       role_id:
         type: string
+    type: object
+  pagination.Meta:
+    properties:
+      current_page:
+        type: integer
+      per_page:
+        type: integer
+      total_items:
+        type: integer
+      total_pages:
+        type: integer
     type: object
 info:
   contact: {}
@@ -460,25 +489,40 @@ paths:
       - Auth
   /api/roles:
     get:
-      description: Returns all roles registered in the system
+      description: Retorna lista de perfis do sistema com paginação
+      parameters:
+      - description: 'Número da página (padrão: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Itens por página (padrão: 10, máx: 50)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/domain.RoleEntity'
-            type: array
+            $ref: '#/definitions/domain.RolePageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: List roles
+      summary: Listar papéis paginados (RBAC - ADMIN)
       tags:
-      - Roles
+      - Admin
     post:
       consumes:
       - application/json
@@ -674,17 +718,24 @@ paths:
       - Roles
   /api/users:
     get:
-      description: Retorna lista de todos os usuários cadastrados. Acesso restrito
+      description: Retorna lista paginada de usuários cadastrados. Acesso restrito
         a ADMIN.
+      parameters:
+      - description: 'Número da página (padrão: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Itens por página (padrão: 10, máx: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/domain.User'
-            type: array
+            $ref: '#/definitions/domain.UserPageResponse'
         "401":
           description: Unauthorized
           schema:
@@ -699,7 +750,7 @@ paths:
             $ref: '#/definitions/apiresponse.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Listar todos os usuários (RBAC - ADMIN)
+      summary: Listar usuários paginados (RBAC - ADMIN)
       tags:
       - Admin
     post:

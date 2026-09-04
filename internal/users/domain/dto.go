@@ -1,7 +1,10 @@
 // Package domain users dto.
 package domain
 
-import "github.com/google/uuid"
+import (
+	"github.com/alisonsandrade/go-start-project/pkg/pagination"
+	"github.com/google/uuid"
+)
 
 // UserBase for interface
 type UserBase struct {
@@ -54,4 +57,10 @@ type UserResponse struct {
 		ID   uuid.UUID `json:"id"`
 		Name string    `json:"name"`
 	} `json:"role"`
+}
+
+// UserPageResponse define a estrutura de resposta documentada no Swagger
+type UserPageResponse struct {
+	Data []User          `json:"data"`
+	Meta pagination.Meta `json:"meta"`
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
 	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -54,25 +55,29 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	platform.JSON(w, http.StatusOK, user)
 }
 
-// ListUsers retorna uma lista de todos os usuários cadastrados no sistema.
-// @Summary      Listar todos os usuários (RBAC - ADMIN)
-// @Description  Retorna lista de todos os usuários cadastrados. Acesso restrito a ADMIN.
+// ListUsers retorna uma lista paginada de todos os usuários cadastrados no sistema.
+// @Summary      Listar usuários paginados (RBAC - ADMIN)
+// @Description  Retorna lista paginada de usuários cadastrados. Acesso restrito a ADMIN.
 // @Tags         Admin
 // @Security     BearerAuth
 // @Produce      json
-// @Success      200  {array}   domain.User
-// @Failure      401  {object}  apiresponse.ErrorResponse
-// @Failure      403  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Param        page  query    int  false  "Número da página (padrão: 1)"
+// @Param        limit query    int  false  "Itens por página (padrão: 10, máx: 100)"
+// @Success      200   {object} domain.UserPageResponse
+// @Failure      401   {object} apiresponse.ErrorResponse
+// @Failure      403   {object} apiresponse.ErrorResponse
+// @Failure      500   {object} apiresponse.ErrorResponse
 // @Router       /api/users [get]
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.userService.ListUsers(r.Context())
+	params := pagination.ExtractParams(r, 10, 100)
+
+	result, err := h.userService.ListUsers(r.Context(), params)
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorJSON(w, http.StatusInternalServerError, "erro ao listar usuários")
 		return
 	}
 
-	platform.JSON(w, http.StatusOK, users)
+	platform.JSON(w, http.StatusOK, result)
 }
 
 // CreateUser create a new user as common user or admin.
