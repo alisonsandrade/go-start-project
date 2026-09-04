@@ -24,6 +24,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/audit"
 	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/config"
+	"github.com/alisonsandrade/go-start-project/internal/platform"
 	"github.com/alisonsandrade/go-start-project/internal/platform/database"
 	"github.com/alisonsandrade/go-start-project/internal/roles"
 	"github.com/alisonsandrade/go-start-project/internal/users"
@@ -49,9 +50,13 @@ func New() (*App, error) {
 		return nil, fmt.Errorf("falha ao conectar no banco: %w", err)
 	}
 
+	// Inicializa logger estruturado globalmente
+	platform.InitLogger()
+
 	// 3. Inicializa Roteador e Middlewares Globais
 	r := chi.NewRouter()
-	r.Use(chimiddleware.Logger)
+	r.Use(chimiddleware.RequestID)
+	r.Use(platform.SlogMiddleware)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -97,6 +102,11 @@ func New() (*App, error) {
 		api.Mount("/users", userHandler.Routes(cfg, roleRepo))
 		api.Mount("/roles", roleHandler.Routes(cfg, roleRepo))
 	})
+
+	// Health check handlers
+	healthHandler := platform.NewHealthCheckHandler(db)
+	r.Get("/healthz", healthHandler.Liveness)
+	r.Get("/readyz", healthHandler.Readiness)
 
 	// Documentação Swagger
 	r.Get("/swagger/*", httpSwagger.Handler(
