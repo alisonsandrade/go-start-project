@@ -66,7 +66,7 @@ func New() (*App, error) {
 	}))
 
 	// 4. Dependency wiring
-	auditRepo := audit.NewRepository(db)
+	auditRepo := audit.NewAuditRepository(db)
 	userRepo := users.NewUserRepository(db)
 	tokenRepo := auth.NewTokenRepository(db)
 	roleRepo := roles.NewRoleRepository(db)

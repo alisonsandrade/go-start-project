@@ -24,4 +24,5 @@ pgdata/
 *.out
 coverage.txt
 bin/
-tmp/
+tmp/coverage.html
+*.out

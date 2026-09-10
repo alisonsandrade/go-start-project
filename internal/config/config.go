@@ -1,4 +1,4 @@
-// Package  config
+// Package config provide functions for load and manager the system config.
 package config
 
 import (

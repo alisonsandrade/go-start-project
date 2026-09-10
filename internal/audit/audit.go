@@ -2,11 +2,9 @@
 package audit
 
 import (
-	"context"
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // Log representa o registro de auditoria persistido no banco de dados
@@ -22,31 +20,4 @@ type Log struct {
 
 func (Log) TableName() string {
 	return "audit_logs"
-}
-
-type Repository interface {
-	Create(ctx context.Context, log *Log) error
-	List(ctx context.Context, limit, offset int) ([]Log, error)
-}
-
-type repository struct {
-	db *gorm.DB
-}
-
-func NewRepository(db *gorm.DB) Repository {
-	return &repository{db: db}
-}
-
-func (r *repository) Create(ctx context.Context, log *Log) error {
-	return r.db.WithContext(ctx).Create(log).Error
-}
-
-func (r *repository) List(ctx context.Context, limit, offset int) ([]Log, error) {
-	var logs []Log
-	err := r.db.WithContext(ctx).
-		Order("created_at DESC").
-		Limit(limit).
-		Offset(offset).
-		Find(&logs).Error
-	return logs, err
 }
