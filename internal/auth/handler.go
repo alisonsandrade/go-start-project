@@ -203,7 +203,6 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		case errors.Is(err, ErrResetTokenExpired):
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
-		// Captura regras do pacote de domínio (ex: tamanho mínimo da senha)
 		default:
 			// Se o err vier do pkgDomain.NewPassword, ele cai aqui com status 400
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
