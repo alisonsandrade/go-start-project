@@ -38,9 +38,9 @@ func NewRoleService(repo RoleRepository) RoleService {
 
 // Create creates a new role ensuring name uniqueness.
 func (s *roleService) Create(role *domain.RoleEntity) (*domain.RoleEntity, error) {
-	_, err := s.repo.GetByName(role.Name)
-
 	role.Name = domain.NormalizeRoleName(role.Name)
+
+	_, err := s.repo.GetByName(role.Name)
 
 	if err == nil {
 		return nil, ErrRoleAlreadyExists

@@ -16,7 +16,7 @@ func TestAuthMiddleware(t *testing.T) {
 	cfg := &config.Config{JWTSecret: "minha-chave-secreta-de-testes-32-bits!"}
 	mw := auth.AuthMiddleware(cfg)
 
-	t.Run("retorna 401 se cabecalho Authorization estiver ausente", func(t *testing.T) {
+	t.Run("returns 401 when Authorization header is missing", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/protected", nil)
 		rr := httptest.NewRecorder()
 
@@ -28,7 +28,7 @@ func TestAuthMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 
-	t.Run("retorna 401 se formato do token nao comecar com Bearer", func(t *testing.T) {
+	t.Run("returns 401 when token format does not start with Bearer", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/protected", nil)
 		req.Header.Set("Authorization", "Token meu-jwt-invalido")
 		rr := httptest.NewRecorder()
@@ -41,7 +41,7 @@ func TestAuthMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 
-	t.Run("retorna 401 se token for invalido ou expirado", func(t *testing.T) {
+	t.Run("returns 401 when token is invalid or expired", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/protected", nil)
 		req.Header.Set("Authorization", "Bearer token-completamente-invalido")
 		rr := httptest.NewRecorder()
@@ -54,7 +54,7 @@ func TestAuthMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 
-	t.Run("injeta claims no contexto e segue quando token for valido", func(t *testing.T) {
+	t.Run("injects claims into context and continues when token is valid", func(t *testing.T) {
 		userID := uuid.New()
 		tokenStr, err := token.GenerateToken(userID, "user@test.com", uuid.New(), cfg.JWTSecret, 1)
 		assert.NoError(t, err)

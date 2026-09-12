@@ -40,7 +40,7 @@ func (m *MockAuditRepo) List(ctx context.Context, limit, offset int) ([]audit.Lo
 func TestAuditMiddleware_AllScenarios(t *testing.T) {
 	jwtSecret := "my-secret-key-for-unit-tests-32"
 
-	t.Run("ignora metodo OPTIONS", func(t *testing.T) {
+	t.Run("ignores OPTIONS method", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 1)}
 		mw := audit.Middleware(repo, jwtSecret)
 
@@ -60,7 +60,7 @@ func TestAuditMiddleware_AllScenarios(t *testing.T) {
 		}
 	})
 
-	t.Run("ignora rotas de swagger e health", func(t *testing.T) {
+	t.Run("ignores Swagger and health routes", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 1)}
 		mw := audit.Middleware(repo, jwtSecret)
 
@@ -86,7 +86,7 @@ func TestAuditMiddleware_AllScenarios(t *testing.T) {
 		}
 	})
 
-	t.Run("extrai userID direto do contexto (Auth Claims)", func(t *testing.T) {
+	t.Run("extracts userID directly from context (auth claims)", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 1)}
 		mw := audit.Middleware(repo, jwtSecret)
 
@@ -115,7 +115,7 @@ func TestAuditMiddleware_AllScenarios(t *testing.T) {
 		}
 	})
 
-	t.Run("trata IP sem porta (RemoteAddr invalido para SplitHostPort)", func(t *testing.T) {
+	t.Run("handles an IP without a port (invalid RemoteAddr for SplitHostPort)", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 1)}
 		mw := audit.Middleware(repo, jwtSecret)
 
@@ -138,7 +138,7 @@ func TestAuditMiddleware_AllScenarios(t *testing.T) {
 		}
 	})
 
-	t.Run("cobre falha de persistencia no banco sem quebrar a requisicao", func(t *testing.T) {
+	t.Run("handles database persistence failure without breaking the request", func(t *testing.T) {
 		repo := &MockAuditRepo{
 			Signal:     make(chan struct{}, 1),
 			ShouldFail: true, // Simula erro no db
@@ -156,14 +156,14 @@ func TestAuditMiddleware_AllScenarios(t *testing.T) {
 
 		select {
 		case <-repo.Signal:
-			// Garante que o erro do repositório foi capturado pelo branch de log
+			// Ensure the repository error was captured by the logging branch.
 			assert.Equal(t, http.StatusOK, rec.Code)
 		case <-time.After(1 * time.Second):
 			t.Fatal("Timeout na persistencia")
 		}
 	})
 
-	t.Run("cobre branches de statusResponseWriter.Write", func(t *testing.T) {
+	t.Run("covers statusResponseWriter.Write branches", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 2)}
 		mw := audit.Middleware(repo, "secret")
 

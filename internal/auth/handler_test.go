@@ -64,7 +64,7 @@ func TestAuthHandler_Register(t *testing.T) {
 	mockSvc := new(MockAuthService)
 	handler := auth.NewAuthHandler(mockSvc)
 
-	t.Run("400 quando o body do json e malformado", func(t *testing.T) {
+	t.Run("returns 400 for malformed JSON body", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewReader([]byte("{invalid-json")))
 		rr := httptest.NewRecorder()
 
@@ -73,7 +73,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("400 quando a validacao da request falha (senha curta)", func(t *testing.T) {
+	t.Run("returns 400 when request validation fails (short password)", func(t *testing.T) {
 		payload, _ := json.Marshal(domain.RegisterRequest{
 			Name:     "Alison",
 			Email:    "alison@example.com",
@@ -88,7 +88,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("409 quando o email ja esta cadastrado", func(t *testing.T) {
+	t.Run("returns 409 when email is already registered", func(t *testing.T) {
 		dto := domain.RegisterRequest{
 			Name:     "Alison Silva",
 			Email:    "duplicado@example.com",
@@ -106,7 +106,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		assert.Equal(t, http.StatusConflict, rr.Code)
 	})
 
-	t.Run("201 quando o cadastro e concluido com sucesso", func(t *testing.T) {
+	t.Run("returns 201 when registration succeeds", func(t *testing.T) {
 		dto := domain.RegisterRequest{
 			Name:     "Alison Silva",
 			Email:    "novo@example.com",
@@ -132,7 +132,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	mockSvc := new(MockAuthService)
 	handler := auth.NewAuthHandler(mockSvc)
 
-	t.Run("400 quando o body e invalido", func(t *testing.T) {
+	t.Run("returns 400 for invalid body", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader([]byte("{invalid-json")))
 		rr := httptest.NewRecorder()
 
@@ -141,7 +141,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("401 quando credenciais sao invalidas", func(t *testing.T) {
+	t.Run("returns 401 for invalid credentials", func(t *testing.T) {
 		dto := domain.LoginRequest{Email: "user@example.com", Password: "wrong"}
 		payload, _ := json.Marshal(dto)
 
@@ -155,7 +155,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 
-	t.Run("200 quando login for bem sucedido", func(t *testing.T) {
+	t.Run("returns 200 when login succeeds", func(t *testing.T) {
 		dto := domain.LoginRequest{Email: "user@example.com", Password: "correct"}
 		payload, _ := json.Marshal(dto)
 
@@ -177,7 +177,7 @@ func TestAuthHandler_RefreshToken(t *testing.T) {
 	mockSvc := new(MockAuthService)
 	handler := auth.NewAuthHandler(mockSvc)
 
-	t.Run("400 quando o token nao for enviado", func(t *testing.T) {
+	t.Run("returns 400 when token is missing", func(t *testing.T) {
 		payload, _ := json.Marshal(domain.RefreshTokenDTO{RefreshToken: ""})
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", bytes.NewReader(payload))
 		rr := httptest.NewRecorder()
@@ -187,7 +187,7 @@ func TestAuthHandler_RefreshToken(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("200 quando token for renovado", func(t *testing.T) {
+	t.Run("returns 200 when token is refreshed", func(t *testing.T) {
 		dto := domain.RefreshTokenDTO{RefreshToken: "valid-token"}
 		payload, _ := json.Marshal(dto)
 
@@ -208,7 +208,7 @@ func TestAuthHandler_ProtectedRoutes(t *testing.T) {
 	mockSvc := new(MockAuthService)
 	handler := auth.NewAuthHandler(mockSvc)
 
-	t.Run("Logout retorna 401 se nao houver claims no contexto", func(t *testing.T) {
+	t.Run("Logout returns 401 when context has no claims", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 		rr := httptest.NewRecorder()
 
@@ -217,7 +217,7 @@ func TestAuthHandler_ProtectedRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 
-	t.Run("Logout com sucesso retorna 200", func(t *testing.T) {
+	t.Run("Logout returns 200 on success", func(t *testing.T) {
 		userID := uuid.New()
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 		ctx := context.WithValue(req.Context(), auth.UserClaimsKey, &token.CustomClaims{UserID: userID})
@@ -231,7 +231,7 @@ func TestAuthHandler_ProtectedRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
-	t.Run("ChangePassword retorna 401 com senha atual incorreta", func(t *testing.T) {
+	t.Run("ChangePassword returns 401 for incorrect current password", func(t *testing.T) {
 		userID := uuid.New()
 		dto := domain.ChangePasswordDTO{
 			CurrentPassword: "wrong",
@@ -251,7 +251,7 @@ func TestAuthHandler_ProtectedRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 
-	t.Run("ChangePassword retorna 401 sem claims", func(t *testing.T) {
+	t.Run("ChangePassword returns 401 without claims", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", bytes.NewReader([]byte(`{}`)))
 		rr := httptest.NewRecorder()
 
@@ -260,7 +260,7 @@ func TestAuthHandler_ProtectedRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 
-	t.Run("ChangePassword retorna 200 com sucesso", func(t *testing.T) {
+	t.Run("ChangePassword returns 200 on success", func(t *testing.T) {
 		userID := uuid.New()
 		dto := domain.ChangePasswordDTO{CurrentPassword: "current", NewPassword: "newSecurePassword123!"}
 		payload, _ := json.Marshal(dto)
@@ -281,7 +281,7 @@ func TestAuthHandler_ForgotAndResetPassword(t *testing.T) {
 	mockSvc := new(MockAuthService)
 	handler := auth.NewAuthHandler(mockSvc)
 
-	t.Run("ForgotPassword retorna 200 com mensagem padrao", func(t *testing.T) {
+	t.Run("ForgotPassword returns 200 with default message", func(t *testing.T) {
 		payload, _ := json.Marshal(domain.ForgotPasswordDTO{Email: "user@example.com"})
 		mockSvc.On("ForgotPassword", mock.Anything, "user@example.com").Return(nil).Once()
 
@@ -293,7 +293,7 @@ func TestAuthHandler_ForgotAndResetPassword(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
 
-	t.Run("ResetPassword retorna 400 com token invalido", func(t *testing.T) {
+	t.Run("ResetPassword returns 400 for invalid token", func(t *testing.T) {
 		dto := domain.ResetPasswordDTO{Token: "bad-token", NewPassword: "novaSenha123!"}
 		payload, _ := json.Marshal(dto)
 
@@ -307,7 +307,7 @@ func TestAuthHandler_ForgotAndResetPassword(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("ResetPassword retorna 200 com sucesso", func(t *testing.T) {
+	t.Run("ResetPassword returns 200 on success", func(t *testing.T) {
 		dto := domain.ResetPasswordDTO{Token: "good-token", NewPassword: "novaSenha123!"}
 		payload, _ := json.Marshal(dto)
 
@@ -334,7 +334,7 @@ func TestAuthHandler_ErrorBranches(t *testing.T) {
 	mockSvc := new(MockAuthService)
 	handler := auth.NewAuthHandler(mockSvc)
 
-	t.Run("Register retorna 500 em erro generico do servico", func(t *testing.T) {
+	t.Run("Register returns 500 for generic service error", func(t *testing.T) {
 		dto := domain.RegisterRequest{
 			Name:     "Alison Silva",
 			Email:    "erro@example.com",
@@ -350,7 +350,7 @@ func TestAuthHandler_ErrorBranches(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	})
 
-	t.Run("Login retorna 500 em erro generico", func(t *testing.T) {
+	t.Run("Login returns 500 for generic error", func(t *testing.T) {
 		dto := domain.LoginRequest{Email: "user@example.com", Password: "pwd"}
 		payload, _ := json.Marshal(dto)
 		mockSvc.On("Login", mock.Anything, dto).Return(nil, errors.New("generic error")).Once()
@@ -362,7 +362,7 @@ func TestAuthHandler_ErrorBranches(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	})
 
-	t.Run("RefreshToken retorna 401 em erro do servico", func(t *testing.T) {
+	t.Run("RefreshToken returns 401 for service error", func(t *testing.T) {
 		dto := domain.RefreshTokenDTO{RefreshToken: "expired"}
 		payload, _ := json.Marshal(dto)
 		mockSvc.On("RefreshSession", mock.Anything, "expired").Return(nil, auth.ErrInvalidRefreshToken).Once()
@@ -382,7 +382,7 @@ func TestAuthHandler_ErrorBranches(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("Logout retorna 500 em falha do servico", func(t *testing.T) {
+	t.Run("Logout returns 500 for service failure", func(t *testing.T) {
 		userID := uuid.New()
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 		ctx := context.WithValue(req.Context(), auth.UserClaimsKey, &token.CustomClaims{UserID: userID})
@@ -395,7 +395,7 @@ func TestAuthHandler_ErrorBranches(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	})
 
-	t.Run("ForgotPassword retorna 500 em falha de servico", func(t *testing.T) {
+	t.Run("ForgotPassword returns 500 for service failure", func(t *testing.T) {
 		payload, _ := json.Marshal(domain.ForgotPasswordDTO{Email: "user@example.com"})
 		mockSvc.On("ForgotPassword", mock.Anything, "user@example.com").Return(errors.New("mailer down")).Once()
 
@@ -414,7 +414,7 @@ func TestAuthHandler_ErrorBranches(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("ResetPassword retorna 400 quando token expirou", func(t *testing.T) {
+	t.Run("ResetPassword returns 400 when token is expired", func(t *testing.T) {
 		dto := domain.ResetPasswordDTO{Token: "exp-token", NewPassword: "novaSenha123!"}
 		payload, _ := json.Marshal(dto)
 		mockSvc.On("ResetPassword", mock.Anything, dto.Token, dto.NewPassword).Return(auth.ErrResetTokenExpired).Once()
@@ -450,7 +450,7 @@ func TestAuthHandler_ErrorBranches(t *testing.T) {
 		mockSvc.AssertExpectations(t)
 	})
 
-	t.Run("ChangePassword retorna 400 quando falhar por validacao de senha", func(t *testing.T) {
+	t.Run("ChangePassword returns 400 when password validation fails", func(t *testing.T) {
 		userID := uuid.New()
 		dto := domain.ChangePasswordDTO{CurrentPassword: "current", NewPassword: "curta"}
 		payload, _ := json.Marshal(dto)

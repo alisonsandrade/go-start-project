@@ -26,3 +26,5 @@ coverage.txt
 bin/
 tmp/coverage.html
 *.out
+coverage.html
+tmp/

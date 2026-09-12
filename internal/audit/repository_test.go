@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupAuditTestDB configura o banco em memória criando a tabela compatível com SQLite
+// setupAuditTestDB configures an in-memory database with a SQLite-compatible table.
 func setupAuditTestDB(t *testing.T) (*gorm.DB, *config.Config) {
 	db, errDB := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, errDB)
@@ -27,7 +27,7 @@ func setupAuditTestDB(t *testing.T) (*gorm.DB, *config.Config) {
 		t.Fatal("falha ao carregar configs: %w", err)
 	}
 
-	// Criação explícita da tabela sem as anotações do PostgreSQL
+	// Explicitly create the table without PostgreSQL annotations.
 	err = db.Exec(`
 		CREATE TABLE audit_logs (
 			id TEXT PRIMARY KEY,
@@ -104,7 +104,7 @@ func TestAuditRepository_List(t *testing.T) {
 	repo := audit.NewAuditRepository(db)
 	ctx := context.Background()
 
-	// Insere 2 registros para testar a busca ordenada
+	// Insert two records to test ordered retrieval.
 	log1 := &audit.Log{
 		ID:        uuid.New(),
 		Action:    "POST",
@@ -121,7 +121,7 @@ func TestAuditRepository_List(t *testing.T) {
 	assert.NoError(t, repo.Create(ctx, log1))
 	assert.NoError(t, repo.Create(ctx, log2))
 
-	t.Run("lista todos os registros com ordenacao decrescente", func(t *testing.T) {
+	t.Run("lists all records in descending order", func(t *testing.T) {
 		// Executa a função List de audit.go
 		logs, err := repo.List(ctx, 10, 0)
 
@@ -132,7 +132,7 @@ func TestAuditRepository_List(t *testing.T) {
 		assert.Equal(t, "DELETE", logs[0].Action)
 	})
 
-	t.Run("aplica limit e offset corretamente", func(t *testing.T) {
+	t.Run("applies limit and offset correctly", func(t *testing.T) {
 		logs, err := repo.List(ctx, 1, 1)
 
 		assert.NoError(t, err)
@@ -141,7 +141,7 @@ func TestAuditRepository_List(t *testing.T) {
 		assert.Equal(t, log1.ID, logs[0].ID)
 	})
 
-	t.Run("ignora requisicoes com metodo GET", func(t *testing.T) {
+	t.Run("ignores requests with the GET method", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 1)}
 		mw := audit.Middleware(repo, cfg.JWTSecret)
 
@@ -161,7 +161,7 @@ func TestAuditRepository_List(t *testing.T) {
 		}
 	})
 
-	t.Run("ignora respostas com erro do cliente ou servidor (status >= 400)", func(t *testing.T) {
+	t.Run("ignores client or server error responses (status >= 400)", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 1)}
 		mw := audit.Middleware(repo, cfg.JWTSecret)
 
@@ -181,7 +181,7 @@ func TestAuditRepository_List(t *testing.T) {
 		}
 	})
 
-	t.Run("extrai userID via fallback do Bearer Token no header", func(t *testing.T) {
+	t.Run("extracts userID through the Bearer token header fallback", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 1)}
 		mw := audit.Middleware(repo, cfg.JWTSecret)
 
@@ -208,7 +208,7 @@ func TestAuditRepository_List(t *testing.T) {
 		}
 	})
 
-	t.Run("cobre chamada de Write quando WriteHeader ja foi chamado", func(t *testing.T) {
+	t.Run("covers Write when WriteHeader has already been called", func(t *testing.T) {
 		repo := &MockAuditRepo{Signal: make(chan struct{}, 1)}
 		mw := audit.Middleware(repo, cfg.JWTSecret)
 

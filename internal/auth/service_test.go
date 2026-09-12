@@ -87,7 +87,7 @@ var testConfig = &config.Config{
 // --- Testes ---
 
 func TestAuthService_Register(t *testing.T) {
-	t.Run("sucesso ao registrar", func(t *testing.T) {
+	t.Run("registers successfully", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		mailer := new(MockMailer)
@@ -113,7 +113,7 @@ func TestAuthService_Register(t *testing.T) {
 		assert.NotEmpty(t, resp.RefreshToken)
 	})
 
-	t.Run("falha quando email ja existe", func(t *testing.T) {
+	t.Run("fails when email already exists", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -139,7 +139,7 @@ func TestAuthService_Register(t *testing.T) {
 		assert.ErrorContains(t, err, "database down")
 	})
 
-	t.Run("falha quando o email e invalido pelo value object", func(t *testing.T) {
+	t.Run("fails when email is invalid according to the value object", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 		req := domain.RegisterRequest{Email: "email-invalido"}
@@ -152,7 +152,7 @@ func TestAuthService_Register(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("falha quando a senha e invalida pelo value object", func(t *testing.T) {
+	t.Run("fails when password is invalid according to the value object", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -169,7 +169,7 @@ func TestAuthService_Register(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("falha quando nao consegue buscar a role padrao", func(t *testing.T) {
+	t.Run("fails when the default role cannot be retrieved", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -209,7 +209,7 @@ func TestAuthService_Register(t *testing.T) {
 }
 
 func TestAuthService_Login(t *testing.T) {
-	t.Run("falha com email invalido", func(t *testing.T) {
+	t.Run("fails with an invalid email", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -221,7 +221,7 @@ func TestAuthService_Login(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 	})
 
-	t.Run("sucesso ao logar com credenciais validas", func(t *testing.T) {
+	t.Run("logs in successfully with valid credentials", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -248,7 +248,7 @@ func TestAuthService_Login(t *testing.T) {
 		assert.NotEmpty(t, resp.AccessToken)
 	})
 
-	t.Run("falha com credenciais invalidas", func(t *testing.T) {
+	t.Run("fails with invalid credentials", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -263,7 +263,7 @@ func TestAuthService_Login(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 	})
 
-	t.Run("falha com usuario inativo", func(t *testing.T) {
+	t.Run("fails with an inactive user", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -282,7 +282,7 @@ func TestAuthService_Login(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrUserInactive)
 	})
 
-	t.Run("falha com senha errada", func(t *testing.T) {
+	t.Run("fails with an incorrect password", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -301,7 +301,7 @@ func TestAuthService_Login(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 	})
 
-	t.Run("falha quando nao consegue persistir o refresh token", func(t *testing.T) {
+	t.Run("fails when refresh token cannot be persisted", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -335,7 +335,7 @@ func TestAuthService_Logout(t *testing.T) {
 }
 
 func TestAuthService_RefreshSession(t *testing.T) {
-	t.Run("falha quando o token nao existe", func(t *testing.T) {
+	t.Run("fails when token does not exist", func(t *testing.T) {
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(nil, tokenRepo, testConfig, nil)
 		tokenRepo.On("FindByToken", mock.Anything, "missing-token").Return(nil, nil)
@@ -346,7 +346,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrInvalidRefreshToken)
 	})
 
-	t.Run("sucesso ao rotacionar refresh token", func(t *testing.T) {
+	t.Run("rotates refresh token successfully", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -374,7 +374,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 		assert.NotNil(t, resp)
 	})
 
-	t.Run("falha com token expirado", func(t *testing.T) {
+	t.Run("fails with an expired token", func(t *testing.T) {
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(nil, tokenRepo, testConfig, nil)
 
@@ -390,7 +390,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrInvalidRefreshToken)
 	})
 
-	t.Run("falha quando usuario esta inativo", func(t *testing.T) {
+	t.Run("fails when user is inactive", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -409,7 +409,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrUserInactive)
 	})
 
-	t.Run("falha quando a rotacao nao consegue apagar o token antigo", func(t *testing.T) {
+	t.Run("fails when rotation cannot delete the old token", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -431,7 +431,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 		assert.ErrorIs(t, err, deleteErr)
 	})
 
-	t.Run("falha quando o email persistido do usuario e invalido", func(t *testing.T) {
+	t.Run("fails when the user's persisted email is invalid", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -452,7 +452,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 }
 
 func TestAuthService_ForgotPassword(t *testing.T) {
-	t.Run("falha quando nao consegue criar o token de recuperacao", func(t *testing.T) {
+	t.Run("fails when recovery token cannot be created", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		mailer := new(MockMailer)
@@ -469,7 +469,7 @@ func TestAuthService_ForgotPassword(t *testing.T) {
 		assert.ErrorIs(t, err, createErr)
 	})
 
-	t.Run("sucesso ao solicitar recuperação", func(t *testing.T) {
+	t.Run("requests password recovery successfully", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		mailer := new(MockMailer)
@@ -488,7 +488,7 @@ func TestAuthService_ForgotPassword(t *testing.T) {
 		mailer.AssertExpectations(t)
 	})
 
-	t.Run("não retorna erro caso o e-mail não seja encontrado", func(t *testing.T) {
+	t.Run("does not return an error when email is not found", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -498,7 +498,7 @@ func TestAuthService_ForgotPassword(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("nao falha quando o envio do email retorna erro", func(t *testing.T) {
+	t.Run("does not fail when email delivery returns an error", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		mailer := new(MockMailer)
@@ -517,7 +517,7 @@ func TestAuthService_ForgotPassword(t *testing.T) {
 }
 
 func TestAuthService_ResetPassword(t *testing.T) {
-	t.Run("sucesso ao redefinir senha", func(t *testing.T) {
+	t.Run("resets password successfully", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -542,7 +542,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("falha com token inválido", func(t *testing.T) {
+	t.Run("fails with an invalid token", func(t *testing.T) {
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(nil, tokenRepo, testConfig, nil)
 
@@ -552,7 +552,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrResetTokenInvalid)
 	})
 
-	t.Run("falha com token expirado", func(t *testing.T) {
+	t.Run("fails with an expired token", func(t *testing.T) {
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(nil, tokenRepo, testConfig, nil)
 
@@ -564,7 +564,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrResetTokenExpired)
 	})
 
-	t.Run("falha com nova senha invalida", func(t *testing.T) {
+	t.Run("fails with an invalid new password", func(t *testing.T) {
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(nil, tokenRepo, testConfig, nil)
 		rawToken := "invalid-password-token"
@@ -577,7 +577,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("falha ao atualizar a senha", func(t *testing.T) {
+	t.Run("fails when updating password", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -598,7 +598,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		assert.ErrorIs(t, err, updateErr)
 	})
 
-	t.Run("falha ao revogar sessoes depois de atualizar a senha", func(t *testing.T) {
+	t.Run("fails when revoking sessions after updating password", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -622,7 +622,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 }
 
 func TestAuthService_ChangePassword(t *testing.T) {
-	t.Run("falha quando usuario nao e encontrado", func(t *testing.T) {
+	t.Run("fails when user is not found", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 		userID := uuid.New()
@@ -633,7 +633,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 	})
 
-	t.Run("sucesso ao trocar senha autenticado", func(t *testing.T) {
+	t.Run("changes password successfully for an authenticated user", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -654,7 +654,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("falha quando a senha atual está incorreta", func(t *testing.T) {
+	t.Run("fails when current password is incorrect", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 
@@ -672,7 +672,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrCurrentPasswordIncorrect)
 	})
 
-	t.Run("falha quando a nova senha e invalida", func(t *testing.T) {
+	t.Run("fails when new password is invalid", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 		userID := uuid.New()
@@ -687,7 +687,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("falha ao persistir a nova senha", func(t *testing.T) {
+	t.Run("fails when new password cannot be persisted", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 		userID := uuid.New()
@@ -706,7 +706,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 }
 
 func TestAuthService_EdgeCases(t *testing.T) {
-	t.Run("RefreshSession falha se usuario nao for encontrado ou estiver inativo", func(t *testing.T) {
+	t.Run("RefreshSession fails when user is not found or inactive", func(t *testing.T) {
 		tokenRepo := new(MockTokenRepo)
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
@@ -726,7 +726,7 @@ func TestAuthService_EdgeCases(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrInvalidRefreshToken)
 	})
 
-	t.Run("ResetPassword falha se usuario associado ao token nao for encontrado", func(t *testing.T) {
+	t.Run("ResetPassword fails when user associated with token is not found", func(t *testing.T) {
 		tokenRepo := new(MockTokenRepo)
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)

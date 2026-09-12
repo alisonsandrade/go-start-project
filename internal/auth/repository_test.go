@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupTokenTestDB inicializa um SQLite em memória compatível
+// setupTokenTestDB initializes a compatible in-memory SQLite database.
 func setupTokenTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
@@ -64,7 +64,7 @@ func TestTokenRepository_AllOperations(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	t.Run("Create e FindByToken com sucesso", func(t *testing.T) {
+	t.Run("Create and FindByToken succeed", func(t *testing.T) {
 		err := repo.Create(ctx, token1)
 		assert.NoError(t, err)
 
@@ -76,36 +76,36 @@ func TestTokenRepository_AllOperations(t *testing.T) {
 		assert.Equal(t, token1.Token, found.Token)
 	})
 
-	t.Run("FindByToken deve retornar erro quando token não existe", func(t *testing.T) {
+	t.Run("FindByToken returns an error when token does not exist", func(t *testing.T) {
 		found, err := repo.FindByToken(ctx, "token-inexistente")
 		assert.Error(t, err)
 		assert.Nil(t, found)
 	})
 
-	t.Run("Delete deve remover um token específico", func(t *testing.T) {
+	t.Run("Delete removes a specific token", func(t *testing.T) {
 		err := repo.Create(ctx, token3)
 		assert.NoError(t, err)
 
-		// Deleta token3
+		// Delete token3.
 		err = repo.Delete(ctx, token3.Token)
 		assert.NoError(t, err)
 
-		// Confirma que não existe mais
+		// Confirm it no longer exists.
 		found, err := repo.FindByToken(ctx, token3.Token)
 		assert.Error(t, err)
 		assert.Nil(t, found)
 	})
 
-	t.Run("DeleteByUserID deve revogar todos os tokens de um usuário específico", func(t *testing.T) {
-		// Insere o segundo token para o userID1
+	t.Run("DeleteByUserID revokes all tokens for a specific user", func(t *testing.T) {
+		// Insert the second token for userID1.
 		err := repo.Create(ctx, token2)
 		assert.NoError(t, err)
 
-		// Exclui todos os tokens associados ao userID1 (token1 e token2)
+		// Delete all tokens associated with userID1 (token1 and token2).
 		err = repo.DeleteByUserID(ctx, userID1)
 		assert.NoError(t, err)
 
-		// Confirma que nenhum dos dois tokens pode ser encontrado
+		// Confirm neither token can be found.
 		_, err1 := repo.FindByToken(ctx, token1.Token)
 		assert.Error(t, err1)
 

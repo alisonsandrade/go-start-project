@@ -41,7 +41,7 @@ func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	// Inicia uma transação. Se algo falhar, o banco sofre Rollback.
 	tx := r.db.WithContext(ctx).Begin()
 
-	if err := tx.Model(&domain.User{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
+	if err := tx.Table("users").Where("id = ?", id).Update("is_active", false).Error; err != nil {
 		tx.Rollback()
 		return err
 	}

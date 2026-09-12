@@ -8,17 +8,17 @@ import (
 )
 
 func TestEmailValueObject(t *testing.T) {
-	t.Run("sucesso ao criar email valido com espaços ou maiusculas", func(t *testing.T) {
+	t.Run("creates a valid email with spaces or uppercase letters successfully", func(t *testing.T) {
 		email, err := domain.NewEmail("  USER@Dominio.COM  ")
 		if err != nil {
-			t.Fatalf("esperava erro nil, recebeu: %v", err)
+			t.Fatalf("expected nil error, got: %v", err)
 		}
 		if email.String() != "user@dominio.com" {
-			t.Errorf("esperava 'user@dominio.com', obteve '%s'", email.String())
+			t.Errorf("expected 'user@dominio.com', got '%s'", email.String())
 		}
 	})
 
-	t.Run("falha ao enviar email invalido", func(t *testing.T) {
+	t.Run("fails to create an invalid email", func(t *testing.T) {
 		invalidCases := []string{"", "user@", "user@dominio", "@dominio.com", "plainaddress"}
 		for _, raw := range invalidCases {
 			_, err := domain.NewEmail(raw)
@@ -30,7 +30,7 @@ func TestEmailValueObject(t *testing.T) {
 }
 
 func TestPasswordValueObject(t *testing.T) {
-	t.Run("sucesso ao criar senha forte e verificar hash", func(t *testing.T) {
+	t.Run("creates a strong password and verifies its hash successfully", func(t *testing.T) {
 		raw := "Senha@Forte123"
 		pass, err := domain.NewPassword(raw)
 		if err != nil {
@@ -46,7 +46,7 @@ func TestPasswordValueObject(t *testing.T) {
 		}
 	})
 
-	t.Run("falha ao criar senha fraca", func(t *testing.T) {
+	t.Run("fails to create a weak password", func(t *testing.T) {
 		weakPasswords := []string{
 			"curta",         // menor que 8 caracteres
 			"somenteletras", // sem número
