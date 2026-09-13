@@ -13,12 +13,11 @@ import (
 
 	"github.com/alisonsandrade/go-start-project/internal/config"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
+	"github.com/google/uuid"
 )
 
-type contextKey string
-
 const (
-	UserClaimsKey contextKey = "userClaims"
+	UserClaimsKey = token.ClaimsContextKey
 )
 
 func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
@@ -51,4 +50,22 @@ func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func TenantContextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tenantID := token.DefaultTenantID
+		if rawTenantID := r.Header.Get("X-Tenant-ID"); rawTenantID != "" {
+			parsedTenantID, err := uuid.Parse(rawTenantID)
+			if err != nil || parsedTenantID == uuid.Nil {
+				http.Error(w, `{"error": "tenant_id inválido"}`, http.StatusBadRequest)
+				return
+			}
+			tenantID = parsedTenantID
+		}
+
+		claims := &token.CustomClaims{TenantID: tenantID}
+		ctx := context.WithValue(r.Context(), UserClaimsKey, claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

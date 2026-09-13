@@ -10,6 +10,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
 	"github.com/alisonsandrade/go-start-project/internal/config"
+	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
 	usersDomain "github.com/alisonsandrade/go-start-project/internal/users/domain"
 	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
 	"github.com/google/uuid"
@@ -229,10 +230,10 @@ func TestAuthService_Login(t *testing.T) {
 		email, _ := pkgDomain.NewEmail("valid@example.com")
 		pwd, _ := pkgDomain.NewPassword("correctPassword123!")
 		user := &usersDomain.User{
-			ID:       uuid.New(),
-			Email:    email,
-			Password: pwd,
-			IsActive: true,
+			BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}},
+			Email:           email,
+			Password:        pwd,
+			IsActive:        true,
 		}
 
 		userRepo.On("FindByEmail", mock.Anything, email.String()).Return(user, nil)
@@ -307,7 +308,7 @@ func TestAuthService_Login(t *testing.T) {
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
 		email, _ := pkgDomain.NewEmail("persist@example.com")
 		pwd, _ := pkgDomain.NewPassword("correctPassword123!")
-		user := &usersDomain.User{ID: uuid.New(), Email: email, Password: pwd, IsActive: true}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Email: email, Password: pwd, IsActive: true}
 		persistErr := errors.New("refresh token persistence failed")
 
 		userRepo.On("FindByEmail", mock.Anything, email.String()).Return(user, nil)
@@ -361,7 +362,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 
 		email, _ := pkgDomain.NewEmail("user@example.com")
 		pwd, _ := pkgDomain.NewPassword("password123!")
-		user := &usersDomain.User{ID: userID, Email: email, Password: pwd, IsActive: true}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Email: email, Password: pwd, IsActive: true}
 
 		tokenRepo.On("FindByToken", mock.Anything, rawToken).Return(existingToken, nil)
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
@@ -398,7 +399,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 		rawToken := "inactive-user-token"
 		rt := &domain.RefreshToken{UserID: userID, Token: rawToken, ExpiresAt: time.Now().Add(time.Hour)}
 		email, _ := pkgDomain.NewEmail("inactive@example.com")
-		user := &usersDomain.User{ID: userID, Email: email, IsActive: false}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Email: email, IsActive: false}
 
 		tokenRepo.On("FindByToken", mock.Anything, rawToken).Return(rt, nil)
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
@@ -418,7 +419,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 		rt := &domain.RefreshToken{UserID: userID, Token: rawToken, ExpiresAt: time.Now().Add(time.Hour)}
 		email, _ := pkgDomain.NewEmail("rotation@example.com")
 		pwd, _ := pkgDomain.NewPassword("password123!")
-		user := &usersDomain.User{ID: userID, Email: email, Password: pwd, IsActive: true}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Email: email, Password: pwd, IsActive: true}
 		deleteErr := errors.New("delete old token failed")
 
 		tokenRepo.On("FindByToken", mock.Anything, rawToken).Return(rt, nil)
@@ -438,7 +439,7 @@ func TestAuthService_RefreshSession(t *testing.T) {
 		userID := uuid.New()
 		rawToken := "invalid-email-token"
 		rt := &domain.RefreshToken{UserID: userID, Token: rawToken, ExpiresAt: time.Now().Add(time.Hour)}
-		user := &usersDomain.User{ID: userID, IsActive: true}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, IsActive: true}
 
 		tokenRepo.On("FindByToken", mock.Anything, rawToken).Return(rt, nil)
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
@@ -458,7 +459,7 @@ func TestAuthService_ForgotPassword(t *testing.T) {
 		mailer := new(MockMailer)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, mailer)
 		email, _ := pkgDomain.NewEmail("create-error@example.com")
-		user := &usersDomain.User{ID: uuid.New(), Email: email}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Email: email}
 		createErr := errors.New("cannot create reset token")
 
 		userRepo.On("FindByEmail", mock.Anything, email.String()).Return(user, nil)
@@ -477,7 +478,7 @@ func TestAuthService_ForgotPassword(t *testing.T) {
 
 		emailStr := "user@example.com"
 		email, _ := pkgDomain.NewEmail(emailStr)
-		user := &usersDomain.User{ID: uuid.New(), Email: email}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Email: email}
 
 		userRepo.On("FindByEmail", mock.Anything, emailStr).Return(user, nil)
 		tokenRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.RefreshToken")).Return(nil)
@@ -504,7 +505,7 @@ func TestAuthService_ForgotPassword(t *testing.T) {
 		mailer := new(MockMailer)
 		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, mailer)
 		email, _ := pkgDomain.NewEmail("mailer-error@example.com")
-		user := &usersDomain.User{ID: uuid.New(), Email: email}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Email: email}
 
 		userRepo.On("FindByEmail", mock.Anything, email.String()).Return(user, nil)
 		tokenRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.RefreshToken")).Return(nil)
@@ -531,7 +532,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		}
 
 		email, _ := pkgDomain.NewEmail("user@example.com")
-		user := &usersDomain.User{ID: userID, Email: email}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Email: email}
 
 		tokenRepo.On("FindByToken", mock.Anything, rawToken).Return(resetToken, nil)
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
@@ -584,7 +585,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		userID := uuid.New()
 		rawToken := "update-error-token"
 		email, _ := pkgDomain.NewEmail("update-error@example.com")
-		user := &usersDomain.User{ID: userID, Email: email}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Email: email}
 		updateErr := errors.New("cannot update password")
 
 		tokenRepo.On("FindByToken", mock.Anything, rawToken).Return(&domain.RefreshToken{
@@ -605,7 +606,7 @@ func TestAuthService_ResetPassword(t *testing.T) {
 		userID := uuid.New()
 		rawToken := "revoke-error-token"
 		email, _ := pkgDomain.NewEmail("revoke-error@example.com")
-		user := &usersDomain.User{ID: userID, Email: email}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Email: email}
 		revokeErr := errors.New("cannot revoke sessions")
 
 		tokenRepo.On("FindByToken", mock.Anything, rawToken).Return(&domain.RefreshToken{
@@ -640,7 +641,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 
 		userID := uuid.New()
 		pwd, _ := pkgDomain.NewPassword("senhaAtual123!")
-		user := &usersDomain.User{ID: userID, Password: pwd}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Password: pwd}
 
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
 		userRepo.On("Update", mock.Anything, mock.AnythingOfType("*domain.User")).Return(nil)
@@ -660,7 +661,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 
 		userID := uuid.New()
 		pwd, _ := pkgDomain.NewPassword("senhaAtual123!")
-		user := &usersDomain.User{ID: userID, Password: pwd}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Password: pwd}
 
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
 
@@ -677,7 +678,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 		userID := uuid.New()
 		pwd, _ := pkgDomain.NewPassword("senhaAtual123!")
-		user := &usersDomain.User{ID: userID, Password: pwd}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Password: pwd}
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
 
 		err := svc.ChangePassword(context.Background(), userID, domain.ChangePasswordDTO{
@@ -692,7 +693,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 		userID := uuid.New()
 		pwd, _ := pkgDomain.NewPassword("senhaAtual123!")
-		user := &usersDomain.User{ID: userID, Password: pwd}
+		user := &usersDomain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Password: pwd}
 		updateErr := errors.New("cannot update user")
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
 		userRepo.On("Update", mock.Anything, mock.AnythingOfType("*domain.User")).Return(updateErr)

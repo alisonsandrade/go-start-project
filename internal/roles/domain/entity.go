@@ -3,28 +3,24 @@ package domain
 
 import (
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
+	"github.com/alisonsandrade/go-start-project/internal/domain"
 )
 
 // Permission represents a fine-grained action, persisted in the database
 type Permission struct {
-	ID          uuid.UUID `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	Code        string    `gorm:"size:100;uniqueIndex;not null" json:"code"`
-	Description string    `gorm:"size:255" json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
+	domain.BaseModel `swaggerignore:"true"`
+	Code             string `gorm:"size:100;uniqueIndex;not null" json:"code"`
+	Description      string `gorm:"size:255" json:"description"`
 }
 
 // RoleEntity represents a role (a named set of permissions) persisted in the database
 type RoleEntity struct {
-	ID          uuid.UUID    `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	Name        string       `gorm:"size:50;uniqueIndex;not null" json:"name"`
-	Description string       `gorm:"size:255" json:"description"`
-	IsSystem    bool         `gorm:"not null;default:false" json:"is_system"`
-	Permissions []Permission `gorm:"many2many:role_permissions;joinForeignKey:RoleID;joinReferences:PermissionID" json:"permissions"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
+	domain.BaseModelTenant `swaggerignore:"true"`
+	Name                   string       `gorm:"size:50;uniqueIndex;not null" json:"name"`
+	Description            string       `gorm:"size:255" json:"description"`
+	IsSystem               bool         `gorm:"not null;default:false" json:"is_system"`
+	Permissions            []Permission `gorm:"many2many:role_permissions;joinForeignKey:RoleID;joinReferences:PermissionID" json:"permissions"`
 }
 
 func (RoleEntity) TableName() string {
@@ -57,4 +53,7 @@ const (
 
 	// Permission assignment
 	PermissionAssignRolePermissions PermissionCode = "role:assign-permissions"
+
+	// Tenant permissions
+	PermissionManageTenant PermissionCode = "tenant:manage"
 )

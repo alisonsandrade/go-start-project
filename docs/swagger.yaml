@@ -42,6 +42,15 @@ definitions:
     required:
     - name
     type: object
+  domain.CreateTenantRequest:
+    properties:
+      document:
+        type: string
+      name:
+        type: string
+      settings:
+        type: object
+    type: object
   domain.CreateUserRequest:
     properties:
       avatar_url:
@@ -85,11 +94,7 @@ definitions:
     properties:
       code:
         type: string
-      created_at:
-        type: string
       description:
-        type: string
-      id:
         type: string
     type: object
   domain.RefreshTokenDTO:
@@ -147,11 +152,7 @@ definitions:
     type: object
   domain.RoleEntity:
     properties:
-      created_at:
-        type: string
       description:
-        type: string
-      id:
         type: string
       is_system:
         type: boolean
@@ -161,14 +162,30 @@ definitions:
         items:
           $ref: '#/definitions/domain.Permission'
         type: array
-      updated_at:
-        type: string
     type: object
   domain.RolePageResponse:
     properties:
       data:
         items:
           $ref: '#/definitions/domain.RoleEntity'
+        type: array
+      meta:
+        $ref: '#/definitions/pagination.Meta'
+    type: object
+  domain.Tenant:
+    properties:
+      document:
+        type: string
+      name:
+        type: string
+      settings:
+        type: object
+    type: object
+  domain.TenantPageResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.Tenant'
         type: array
       meta:
         $ref: '#/definitions/pagination.Meta'
@@ -183,6 +200,15 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  domain.UpdateTenantRequest:
+    properties:
+      document:
+        type: string
+      name:
+        type: string
+      settings:
+        type: object
     type: object
   domain.UpdateUserRequest:
     properties:
@@ -208,11 +234,7 @@ definitions:
         type: string
       bio:
         type: string
-      created_at:
-        type: string
       email:
-        type: string
-      id:
         type: string
       is_active:
         type: boolean
@@ -226,8 +248,6 @@ definitions:
         type: object
       role_id:
         format: uuid
-        type: string
-      updated_at:
         type: string
     type: object
   domain.UserPageResponse:
@@ -716,6 +736,217 @@ paths:
       summary: Replace role permissions
       tags:
       - Roles
+  /api/tenants:
+    get:
+      description: Returns tenants using page and limit pagination.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 10, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.TenantPageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tenants
+      tags:
+      - Tenants
+    post:
+      consumes:
+      - application/json
+      description: Creates a tenant with its identification document and settings.
+      parameters:
+      - description: Tenant data
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateTenantRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Tenant'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Register tenant
+      tags:
+      - Tenants
+  /api/tenants/{id}:
+    delete:
+      description: Soft deletes a tenant. Requires tenant management permission.
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apiresponse.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete tenant
+      tags:
+      - Tenants
+    get:
+      description: Returns a tenant by its UUID.
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Tenant'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get tenant
+      tags:
+      - Tenants
+    put:
+      consumes:
+      - application/json
+      description: Updates tenant registration data.
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant data
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateTenantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Tenant'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update tenant
+      tags:
+      - Tenants
+  /api/tenants/me:
+    get:
+      description: Returns only the tenant associated with the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Tenant'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current tenant
+      tags:
+      - Tenants
   /api/users:
     get:
       description: Retorna lista paginada de usuários cadastrados. Acesso restrito

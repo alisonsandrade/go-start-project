@@ -14,6 +14,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var ctx = context.Background()
+
 func TestRoleService_Create(t *testing.T) {
 	t.Run("creates a role successfully and normalizes its name", func(t *testing.T) {
 		repo := new(MockRoleRepo)
@@ -26,7 +28,7 @@ func TestRoleService_Create(t *testing.T) {
 		// Simula o banco salvando com sucesso
 		repo.On("Create", mock.AnythingOfType("*domain.RoleEntity")).Return(nil).Once()
 
-		created, err := svc.Create(role)
+		created, err := svc.Create(ctx, role)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "ADMIN", created.Name) // Ensures the normalization rule ran.
@@ -42,7 +44,7 @@ func TestRoleService_Create(t *testing.T) {
 		// Simula que o banco ACHOU um papel com esse nome
 		repo.On("GetByName", "USER").Return(&domain.RoleEntity{}, nil).Once()
 
-		_, err := svc.Create(role)
+		_, err := svc.Create(ctx, role)
 
 		assert.ErrorIs(t, err, roles.ErrRoleAlreadyExists)
 	})
@@ -53,7 +55,7 @@ func TestRoleService_Create(t *testing.T) {
 		role := &domain.RoleEntity{Name: "DB_DOWN"}
 
 		repo.On("GetByName", "DB_DOWN").Return(nil, errors.New("db error")).Once()
-		_, err := svc.Create(role)
+		_, err := svc.Create(ctx, role)
 		assert.ErrorContains(t, err, "db error")
 	})
 
@@ -65,7 +67,7 @@ func TestRoleService_Create(t *testing.T) {
 		repo.On("GetByName", "SAVE_ERROR").Return(nil, gorm.ErrRecordNotFound).Once()
 		repo.On("Create", mock.Anything).Return(errors.New("insert failed")).Once()
 
-		_, err := svc.Create(role)
+		_, err := svc.Create(ctx, role)
 		assert.ErrorContains(t, err, "insert failed")
 	})
 }
@@ -78,7 +80,7 @@ func TestRoleService_GetByID(t *testing.T) {
 
 		repo.On("GetByID", id).Return(nil, gorm.ErrRecordNotFound).Once()
 
-		_, err := svc.GetByID(id)
+		_, err := svc.GetByID(ctx, id)
 
 		assert.ErrorIs(t, err, roles.ErrRoleNotFound) // Error translation rule.
 	})
@@ -89,7 +91,7 @@ func TestRoleService_GetByID(t *testing.T) {
 		id := uuid.New()
 
 		repo.On("GetByID", id).Return(nil, errors.New("db dead")).Once()
-		_, err := svc.GetByID(id)
+		_, err := svc.GetByID(ctx, id)
 		assert.ErrorContains(t, err, "db dead")
 	})
 
@@ -97,10 +99,12 @@ func TestRoleService_GetByID(t *testing.T) {
 		repo := new(MockRoleRepo)
 		svc := roles.NewRoleService(repo)
 		id := uuid.New()
-		expectedRole := &domain.RoleEntity{ID: id, Name: "OK"}
+		expectedRole := &domain.RoleEntity{}
+		expectedRole.ID = id
+		expectedRole.Name = "OK"
 
 		repo.On("GetByID", id).Return(expectedRole, nil).Once()
-		res, err := svc.GetByID(id)
+		res, err := svc.GetByID(ctx, id)
 		assert.NoError(t, err)
 		assert.Equal(t, "OK", res.Name)
 	})
@@ -141,12 +145,14 @@ func TestRoleService_Update(t *testing.T) {
 		repo := new(MockRoleRepo)
 		svc := roles.NewRoleService(repo)
 
-		roleToUpdate := &domain.RoleEntity{ID: uuid.New(), Name: "ADMIN"}
+		roleToUpdate := &domain.RoleEntity{}
+		roleToUpdate.ID = uuid.New()
+		roleToUpdate.Name = "ADMIN"
 
 		// Simula que o papel existe no banco, mas tem a flag IsSystem = true
 		repo.On("GetByID", roleToUpdate.ID).Return(&domain.RoleEntity{IsSystem: true}, nil).Once()
 
-		_, err := svc.Update(roleToUpdate)
+		_, err := svc.Update(ctx, roleToUpdate)
 
 		assert.ErrorIs(t, err, roles.ErrSystemRoleImmutable) // A regra blindou o sistema!
 	})
@@ -155,13 +161,15 @@ func TestRoleService_Update(t *testing.T) {
 		repo := new(MockRoleRepo)
 		svc := roles.NewRoleService(repo)
 
-		roleToUpdate := &domain.RoleEntity{ID: uuid.New(), Name: "MANAGER"}
+		roleToUpdate := &domain.RoleEntity{}
+		roleToUpdate.ID = uuid.New()
+		roleToUpdate.Name = "MANAGER"
 
 		// Retorna IsSystem = false (permitido)
 		repo.On("GetByID", roleToUpdate.ID).Return(&domain.RoleEntity{IsSystem: false}, nil).Twice()
 		repo.On("Update", roleToUpdate).Return(nil).Once()
 
-		_, err := svc.Update(roleToUpdate)
+		_, err := svc.Update(ctx, roleToUpdate)
 
 		assert.NoError(t, err)
 	})
@@ -169,22 +177,24 @@ func TestRoleService_Update(t *testing.T) {
 	t.Run("returns an error when role is not found during update", func(t *testing.T) {
 		repo := new(MockRoleRepo)
 		svc := roles.NewRoleService(repo)
-		role := &domain.RoleEntity{ID: uuid.New()}
+		role := &domain.RoleEntity{}
+		role.ID = uuid.New()
 
 		repo.On("GetByID", role.ID).Return(nil, gorm.ErrRecordNotFound).Once()
-		_, err := svc.Update(role)
+		_, err := svc.Update(ctx, role)
 		assert.ErrorIs(t, err, roles.ErrRoleNotFound)
 	})
 
 	t.Run("returns a generic database error during update", func(t *testing.T) {
 		repo := new(MockRoleRepo)
 		svc := roles.NewRoleService(repo)
-		role := &domain.RoleEntity{ID: uuid.New()}
+		role := &domain.RoleEntity{}
+		role.ID = uuid.New()
 
 		repo.On("GetByID", role.ID).Return(&domain.RoleEntity{IsSystem: false}, nil).Twice()
 		repo.On("Update", role).Return(errors.New("lock error")).Once()
 
-		_, err := svc.Update(role)
+		_, err := svc.Update(ctx, role)
 		assert.ErrorContains(t, err, "lock error")
 	})
 }
@@ -197,7 +207,7 @@ func TestRoleService_Delete(t *testing.T) {
 
 		repo.On("GetByID", id).Return(&domain.RoleEntity{IsSystem: true}, nil).Once()
 
-		err := svc.Delete(id)
+		err := svc.Delete(ctx, id)
 
 		assert.ErrorIs(t, err, roles.ErrSystemRoleImmutable)
 	})
@@ -210,7 +220,7 @@ func TestRoleService_Delete(t *testing.T) {
 		repo.On("GetByID", id).Return(&domain.RoleEntity{IsSystem: false}, nil).Once()
 		repo.On("Delete", id).Return(nil).Once()
 
-		err := svc.Delete(id)
+		err := svc.Delete(ctx, id)
 
 		assert.NoError(t, err)
 	})
@@ -221,7 +231,7 @@ func TestRoleService_Delete(t *testing.T) {
 		id := uuid.New()
 
 		repo.On("GetByID", id).Return(nil, gorm.ErrRecordNotFound).Once()
-		err := svc.Delete(id)
+		err := svc.Delete(ctx, id)
 		assert.ErrorIs(t, err, roles.ErrRoleNotFound)
 	})
 }
@@ -240,7 +250,7 @@ func TestRoleService_ReplacePermissions(t *testing.T) {
 		// O usuário enviou 2 permissões, mas o Mock diz que o banco só achou 1
 		repo.On("CountPermissionsByIDs", mock.Anything).Return(int64(1), nil).Once()
 
-		err := svc.ReplacePermissions(roleID, perms)
+		err := svc.ReplacePermissions(ctx, roleID, perms)
 
 		assert.ErrorIs(t, err, roles.ErrInvalidPermissions)
 	})
@@ -259,7 +269,7 @@ func TestRoleService_ReplacePermissions(t *testing.T) {
 		repo.On("CountPermissionsByIDs", []uuid.UUID{perm1}).Return(int64(1), nil).Once()
 		repo.On("ReplacePermissions", roleID, []uuid.UUID{perm1}).Return(nil).Once()
 
-		err := svc.ReplacePermissions(roleID, perms)
+		err := svc.ReplacePermissions(ctx, roleID, perms)
 
 		assert.NoError(t, err)
 		repo.AssertExpectations(t)
@@ -271,7 +281,7 @@ func TestRoleService_ReplacePermissions(t *testing.T) {
 		id := uuid.New()
 
 		repo.On("GetByID", id).Return(nil, gorm.ErrRecordNotFound).Once()
-		err := svc.ReplacePermissions(id, []uuid.UUID{uuid.New()})
+		err := svc.ReplacePermissions(ctx, id, []uuid.UUID{uuid.New()})
 		assert.ErrorIs(t, err, roles.ErrRoleNotFound)
 	})
 
@@ -281,7 +291,7 @@ func TestRoleService_ReplacePermissions(t *testing.T) {
 		id := uuid.New()
 
 		repo.On("GetByID", id).Return(&domain.RoleEntity{IsSystem: true}, nil).Once()
-		err := svc.ReplacePermissions(id, []uuid.UUID{uuid.New()})
+		err := svc.ReplacePermissions(ctx, id, []uuid.UUID{uuid.New()})
 		assert.ErrorIs(t, err, roles.ErrSystemRoleImmutable)
 	})
 
@@ -293,7 +303,7 @@ func TestRoleService_ReplacePermissions(t *testing.T) {
 		repo.On("GetByID", id).Return(&domain.RoleEntity{IsSystem: false}, nil).Once()
 		repo.On("ReplacePermissions", id, []uuid.UUID{}).Return(nil).Once()
 
-		err := svc.ReplacePermissions(id, []uuid.UUID{})
+		err := svc.ReplacePermissions(ctx, id, []uuid.UUID{})
 		assert.NoError(t, err)
 	})
 
@@ -305,7 +315,7 @@ func TestRoleService_ReplacePermissions(t *testing.T) {
 		repo.On("GetByID", id).Return(&domain.RoleEntity{IsSystem: false}, nil).Once()
 		repo.On("CountPermissionsByIDs", []uuid.UUID{permID}).Return(int64(0), errors.New("db crash")).Once()
 
-		err := svc.ReplacePermissions(id, []uuid.UUID{permID})
+		err := svc.ReplacePermissions(ctx, id, []uuid.UUID{permID})
 		assert.ErrorContains(t, err, "db crash")
 	})
 }

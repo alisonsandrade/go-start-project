@@ -91,7 +91,8 @@ func TestAuditMiddleware_AllScenarios(t *testing.T) {
 		mw := audit.Middleware(repo, jwtSecret)
 
 		userID := uuid.New()
-		claims := &token.CustomClaims{UserID: userID}
+		tenantID := uuid.New()
+		claims := &token.CustomClaims{UserID: userID, TenantID: tenantID}
 
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Escreve direto no body sem chamar WriteHeader primeiro para exercitar Write()
@@ -109,6 +110,7 @@ func TestAuditMiddleware_AllScenarios(t *testing.T) {
 		case <-repo.Signal:
 			assert.NotNil(t, repo.CapturedLog.UserID)
 			assert.Equal(t, userID, *repo.CapturedLog.UserID)
+			assert.Equal(t, tenantID, repo.CapturedLog.TenantID)
 			assert.Equal(t, "/api/roles", repo.CapturedLog.Resource)
 		case <-time.After(1 * time.Second):
 			t.Fatal("Timeout esperando persistencia de auditoria")

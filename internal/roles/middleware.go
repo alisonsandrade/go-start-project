@@ -22,7 +22,7 @@ func RequirePermission(
 				return
 			}
 
-			hasPermission, err := roleRepo.RoleHasPermission(claims.RoleID, permission)
+			hasPermission, err := roleRepo.RoleHasPermission(r.Context(), claims.RoleID, permission)
 			if err != nil {
 				http.Error(w, `{"error": "verified permission error"}`, http.StatusInternalServerError)
 				return

@@ -10,6 +10,7 @@ import (
 
 	"github.com/alisonsandrade/go-start-project/internal/audit"
 	"github.com/alisonsandrade/go-start-project/internal/config"
+	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
@@ -31,6 +32,9 @@ func setupAuditTestDB(t *testing.T) (*gorm.DB, *config.Config) {
 	err = db.Exec(`
 		CREATE TABLE audit_logs (
 			id TEXT PRIMARY KEY,
+			tenant_id TEXT NOT NULL,
+			updated_at DATETIME,
+			deleted_at DATETIME,
 			user_id TEXT,
 			action TEXT NOT NULL,
 			resource TEXT NOT NULL,
@@ -48,7 +52,7 @@ func TestAuditRepository_Create(t *testing.T) {
 	db, _ := setupAuditTestDB(t)
 	// Usa o construtor real declarado em audit.go
 	repo := audit.NewAuditRepository(db)
-	ctx := context.Background()
+	ctx := context.WithValue(context.Background(), token.ClaimsContextKey, &token.CustomClaims{TenantID: token.DefaultTenantID})
 
 	uid := uuid.New()
 
@@ -60,26 +64,24 @@ func TestAuditRepository_Create(t *testing.T) {
 		{
 			name: "create a new log when save a new user",
 			log: audit.Log{
-				ID:        uuid.New(),
-				UserID:    &uid,
-				Action:    "POST",
-				Resource:  "/api/users",
-				IPAddress: "127.0.0.1",
-				UserAgent: "Go-Test-Agent",
-				CreatedAt: time.Now().UTC().Add(-1 * time.Minute),
+				BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New(), CreatedAt: time.Now().UTC().Add(-1 * time.Minute)}},
+				UserID:          &uid,
+				Action:          "POST",
+				Resource:        "/api/users",
+				IPAddress:       "127.0.0.1",
+				UserAgent:       "Go-Test-Agent",
 			},
 			expectError: false,
 		},
 		{
 			name: "create a new log when update roles (sem user_id)",
 			log: audit.Log{
-				ID:        uuid.New(),
-				UserID:    nil,
-				Action:    "PUT",
-				Resource:  "/api/roles",
-				IPAddress: "192.168.0.1",
-				UserAgent: "Go-Test-Agent",
-				CreatedAt: time.Now().UTC(),
+				BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New(), CreatedAt: time.Now().UTC()}},
+				UserID:          nil,
+				Action:          "PUT",
+				Resource:        "/api/roles",
+				IPAddress:       "192.168.0.1",
+				UserAgent:       "Go-Test-Agent",
 			},
 			expectError: false,
 		},
@@ -102,20 +104,18 @@ func TestAuditRepository_Create(t *testing.T) {
 func TestAuditRepository_List(t *testing.T) {
 	db, cfg := setupAuditTestDB(t)
 	repo := audit.NewAuditRepository(db)
-	ctx := context.Background()
+	ctx := context.WithValue(context.Background(), token.ClaimsContextKey, &token.CustomClaims{TenantID: token.DefaultTenantID})
 
 	// Insert two records to test ordered retrieval.
 	log1 := &audit.Log{
-		ID:        uuid.New(),
-		Action:    "POST",
-		Resource:  "/api/users",
-		CreatedAt: time.Now().UTC().Add(-10 * time.Minute),
+		BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New(), CreatedAt: time.Now().UTC().Add(-10 * time.Minute)}},
+		Action:          "POST",
+		Resource:        "/api/users",
 	}
 	log2 := &audit.Log{
-		ID:        uuid.New(),
-		Action:    "DELETE",
-		Resource:  "/api/users/1",
-		CreatedAt: time.Now().UTC(), // Mais recente
+		BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New(), CreatedAt: time.Now().UTC()}},
+		Action:          "DELETE",
+		Resource:        "/api/users/1",
 	}
 
 	assert.NoError(t, repo.Create(ctx, log1))
@@ -186,7 +186,8 @@ func TestAuditRepository_List(t *testing.T) {
 		mw := audit.Middleware(repo, cfg.JWTSecret)
 
 		userID := uuid.New()
-		tokenStr, err := token.GenerateToken(userID, "user@test.com", uuid.New(), cfg.JWTSecret, 1)
+		tenantID := uuid.New()
+		tokenStr, err := token.GenerateToken(userID, "user@test.com", uuid.New(), cfg.JWTSecret, 1, tenantID)
 		assert.NoError(t, err)
 
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -202,6 +203,7 @@ func TestAuditRepository_List(t *testing.T) {
 		case <-repo.Signal:
 			assert.NotNil(t, repo.CapturedLog.UserID)
 			assert.Equal(t, userID, *repo.CapturedLog.UserID)
+			assert.Equal(t, tenantID, repo.CapturedLog.TenantID)
 			assert.Equal(t, "/api/users/profile", repo.CapturedLog.Resource)
 		case <-time.After(1 * time.Second):
 			t.Fatal("Timeout aguardando auditoria via Bearer token")

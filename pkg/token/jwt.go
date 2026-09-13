@@ -12,11 +12,18 @@ import (
 )
 
 type CustomClaims struct {
-	UserID uuid.UUID `json:"user_id"`
-	Email  string    `json:"email"`
-	RoleID uuid.UUID `json:"role_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	Email    string    `json:"email"`
+	RoleID   uuid.UUID `json:"role_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 	jwt.RegisteredClaims
 }
+
+var DefaultTenantID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
+
+type contextKey string
+
+const ClaimsContextKey contextKey = "userClaims"
 
 func GenerateToken(
 	userID uuid.UUID,
@@ -24,11 +31,18 @@ func GenerateToken(
 	roleID uuid.UUID,
 	secretKey string,
 	expHours int,
+	tenantIDs ...uuid.UUID,
 ) (string, error) {
+	var tenantID uuid.UUID
+	if len(tenantIDs) > 0 {
+		tenantID = tenantIDs[0]
+	}
+
 	claims := CustomClaims{
-		UserID: userID,
-		Email:  email,
-		RoleID: roleID,
+		UserID:   userID,
+		Email:    email,
+		RoleID:   roleID,
+		TenantID: tenantID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * time.Duration(expHours))),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

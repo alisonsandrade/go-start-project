@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
+	"github.com/alisonsandrade/go-start-project/internal/platform/database"
 	usersDomain "github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -34,12 +35,12 @@ func NewTokenRepository(db *gorm.DB) TokenRepository {
 }
 
 func (r *tokenRepository) Create(ctx context.Context, token *domain.RefreshToken) error {
-	return r.db.Create(token).Error
+	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Create(token).Error
 }
 
 func (r *tokenRepository) FindByToken(ctx context.Context, token string) (*domain.RefreshToken, error) {
 	var rt domain.RefreshToken
-	err := r.db.Where("token = ?", token).First(&rt).Error
+	err := r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("token = ?", token).First(&rt).Error
 	if err != nil {
 		return nil, err
 	}
@@ -47,9 +48,9 @@ func (r *tokenRepository) FindByToken(ctx context.Context, token string) (*domai
 }
 
 func (r *tokenRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
-	return r.db.Where("user_id = ?", userID).Delete(&domain.RefreshToken{}).Error
+	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("user_id = ?", userID).Delete(&domain.RefreshToken{}).Error
 }
 
 func (r *tokenRepository) Delete(ctx context.Context, token string) error {
-	return r.db.Where("token = ?", token).Delete(&domain.RefreshToken{}).Error
+	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("token = ?", token).Delete(&domain.RefreshToken{}).Error
 }

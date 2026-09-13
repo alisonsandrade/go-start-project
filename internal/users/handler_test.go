@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/alisonsandrade/go-start-project/internal/auth"
+	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
@@ -86,7 +87,7 @@ func withRouteID(req *http.Request, id string) *http.Request {
 
 func TestUserHandler_GetUser(t *testing.T) {
 	userID := uuid.New()
-	user := &domain.User{ID: userID, Name: "Alice"}
+	user := &domain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Name: "Alice"}
 	service := new(mockUserService)
 	service.On("GetUser", mock.Anything, userID).Return(user, nil).Once()
 
@@ -114,7 +115,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 	userID := uuid.New()
 	roleID := uuid.New()
 	dto := domain.CreateUserRequest{UserBase: domain.UserBase{Name: "Alice", Email: "alice@example.com"}, Password: "StrongPass1", RoleID: roleID}
-	user := &domain.User{ID: userID, Name: "Alice", RoleID: roleID}
+	user := &domain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Name: "Alice", RoleID: roleID}
 
 	t.Run("returns unauthorized without claims", func(t *testing.T) {
 		service := new(mockUserService)
@@ -151,7 +152,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 func TestUserHandler_UpdateAndDeleteUser(t *testing.T) {
 	userID := uuid.New()
 	dto := domain.UpdateUserRequest{Name: "Updated Alice"}
-	user := &domain.User{ID: userID, Name: dto.Name}
+	user := &domain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Name: dto.Name}
 
 	t.Run("updates the authenticated user", func(t *testing.T) {
 		service := new(mockUserService)
@@ -186,7 +187,7 @@ func TestUserHandler_UpdateAndDeleteUser(t *testing.T) {
 
 func TestUserHandler_AdminEndpoints(t *testing.T) {
 	userID := uuid.New()
-	user := &domain.User{ID: userID, Name: "Alice"}
+	user := &domain.User{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: userID}}, Name: "Alice"}
 
 	t.Run("rejects an invalid user ID", func(t *testing.T) {
 		rr := httptest.NewRecorder()

@@ -5,8 +5,10 @@ import (
 	"testing"
 	"time"
 
+	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
 	rolesDomain "github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +23,7 @@ func setupUserTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, db.Exec(`
 		CREATE TABLE roles (
 			id uuid PRIMARY KEY,
+			tenant_id uuid NOT NULL,
 			name text NOT NULL,
 			description text,
 			is_system numeric NOT NULL DEFAULT false,
@@ -30,6 +33,10 @@ func setupUserTestDB(t *testing.T) *gorm.DB {
 	`).Error)
 	require.NoError(t, db.AutoMigrate(&domain.User{}))
 	return db
+}
+
+func tenantContext() context.Context {
+	return context.WithValue(context.Background(), token.ClaimsContextKey, &token.CustomClaims{TenantID: token.DefaultTenantID})
 }
 
 func createRepositoryTestUser(t *testing.T, roleID uuid.UUID, name, email string) *domain.User {
@@ -42,9 +49,9 @@ func createRepositoryTestUser(t *testing.T, roleID uuid.UUID, name, email string
 func TestUserRepository_CRUD(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := NewUserRepository(db)
-	ctx := context.Background()
-	role := &rolesDomain.RoleEntity{ID: uuid.New(), Name: "USER"}
-	require.NoError(t, db.Create(role).Error)
+	ctx := tenantContext()
+	role := &rolesDomain.RoleEntity{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Name: "USER"}
+	require.NoError(t, db.WithContext(ctx).Create(role).Error)
 	user := createRepositoryTestUser(t, role.ID, "Alice Smith", "alice@example.com")
 
 	t.Run("creates and finds a user by email and ID", func(t *testing.T) {
@@ -85,10 +92,10 @@ func TestUserRepository_CRUD(t *testing.T) {
 func TestUserRepository_GetDefaultRoleID(t *testing.T) {
 	db := setupUserTestDB(t)
 	roleID := uuid.New()
-	require.NoError(t, db.Create(&rolesDomain.RoleEntity{ID: roleID, Name: "USER"}).Error)
+	require.NoError(t, db.WithContext(tenantContext()).Create(&rolesDomain.RoleEntity{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: roleID}}, Name: "USER"}).Error)
 	repo := NewUserRepository(db)
 
-	result, err := repo.GetDefaultRoleID(context.Background())
+	result, err := repo.GetDefaultRoleID(tenantContext())
 
 	assert.NoError(t, err)
 	assert.Equal(t, roleID, result)
@@ -97,16 +104,16 @@ func TestUserRepository_GetDefaultRoleID(t *testing.T) {
 func TestUserRepository_List(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := NewUserRepository(db)
-	role := &rolesDomain.RoleEntity{ID: uuid.New(), Name: "USER"}
-	require.NoError(t, db.Create(role).Error)
+	role := &rolesDomain.RoleEntity{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Name: "USER"}
+	require.NoError(t, db.WithContext(tenantContext()).Create(role).Error)
 	first := createRepositoryTestUser(t, role.ID, "First User", "first@example.com")
 	first.CreatedAt = time.Now().UTC().Add(-time.Hour)
 	second := createRepositoryTestUser(t, role.ID, "Second User", "second@example.com")
 	second.CreatedAt = time.Now().UTC()
-	require.NoError(t, repo.Create(context.Background(), first))
-	require.NoError(t, repo.Create(context.Background(), second))
+	require.NoError(t, repo.Create(tenantContext(), first))
+	require.NoError(t, repo.Create(tenantContext(), second))
 
-	users, total, err := repo.List(context.Background(), 1, 0)
+	users, total, err := repo.List(tenantContext(), 1, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), total)
@@ -118,15 +125,15 @@ func TestUserRepository_List(t *testing.T) {
 func TestUserRepository_Delete(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := NewUserRepository(db)
-	role := &rolesDomain.RoleEntity{ID: uuid.New(), Name: "USER"}
-	require.NoError(t, db.Create(role).Error)
+	role := &rolesDomain.RoleEntity{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Name: "USER"}
+	require.NoError(t, db.WithContext(tenantContext()).Create(role).Error)
 	user := createRepositoryTestUser(t, role.ID, "Delete User", "delete@example.com")
-	require.NoError(t, repo.Create(context.Background(), user))
+	require.NoError(t, repo.Create(tenantContext(), user))
 
-	err := repo.Delete(context.Background(), user.ID)
+	err := repo.Delete(tenantContext(), user.ID)
 
 	require.NoError(t, err)
-	found, err := repo.FindByID(context.Background(), user.ID)
+	found, err := repo.FindByID(tenantContext(), user.ID)
 	assert.NoError(t, err)
 	assert.Nil(t, found)
 

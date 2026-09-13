@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/alisonsandrade/go-start-project/internal/platform/database"
 	rolesDomain "github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	"github.com/google/uuid"
@@ -30,16 +31,16 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 }
 
 func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
-	return r.db.WithContext(ctx).Create(user).Error
+	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Create(user).Error
 }
 
 func (r *userRepository) Update(ctx context.Context, user *domain.User) error {
-	return r.db.WithContext(ctx).Save(user).Error
+	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Save(user).Error
 }
 
 func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	// Inicia uma transação. Se algo falhar, o banco sofre Rollback.
-	tx := r.db.WithContext(ctx).Begin()
+	tx := r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Begin()
 
 	if err := tx.Table("users").Where("id = ?", id).Update("is_active", false).Error; err != nil {
 		tx.Rollback()
@@ -60,6 +61,7 @@ func (r *userRepository) GetDefaultRoleID(ctx context.Context) (uuid.UUID, error
 	err := r.db.
 		WithContext(ctx).
 		Table("roles").
+		Scopes(database.TenantScope(ctx)).
 		Select("id").
 		Where("name = ?", "USER").
 		First(&role).
@@ -73,6 +75,7 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*domain
 
 	err := r.db.
 		WithContext(ctx).
+		Scopes(database.TenantScope(ctx)).
 		Preload("Role").
 		Where("email = ?", email).
 		First(&user).Error
@@ -89,6 +92,7 @@ func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Us
 	var user domain.User
 	err := r.db.
 		WithContext(ctx).
+		Scopes(database.TenantScope(ctx)).
 		Preload("Role").
 		First(&user, id).Error
 	if err != nil {
@@ -104,12 +108,13 @@ func (r *userRepository) List(ctx context.Context, limit, offset int) ([]domain.
 	var users []domain.User
 	var total int64
 
-	if err := r.db.WithContext(ctx).Model(&domain.User{}).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Model(&domain.User{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	err := r.db.
 		WithContext(ctx).
+		Scopes(database.TenantScope(ctx)).
 		Preload("Role").
 		Order("created_at DESC").
 		Limit(limit).

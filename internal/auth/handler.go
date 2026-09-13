@@ -270,11 +270,11 @@ func (h *AuthHandler) AuthRoutes(cfg *config.Config) chi.Router {
 	registerRateLimit := platform.RateLimiter(10, time.Minute)
 
 	// Public routes
-	r.With(registerRateLimit).Post("/register", h.Register)
-	r.With(authRateLimit).Post("/login", h.Login)
-	r.Post("/refresh", h.RefreshToken)
-	r.Post("/forgot-password", h.ForgotPassword)
-	r.Post("/reset-password", h.ResetPassword)
+	r.With(TenantContextMiddleware, registerRateLimit).Post("/register", h.Register)
+	r.With(TenantContextMiddleware, authRateLimit).Post("/login", h.Login)
+	r.With(TenantContextMiddleware).Post("/refresh", h.RefreshToken)
+	r.With(TenantContextMiddleware).Post("/forgot-password", h.ForgotPassword)
+	r.With(TenantContextMiddleware).Post("/reset-password", h.ResetPassword)
 
 	// Protected route (requires a valid JWT)
 	r.Group(func(protected chi.Router) {

@@ -55,25 +55,25 @@ func (m *mockUserRepository) List(ctx context.Context, limit, offset int) ([]dom
 
 type mockRoleRepository struct{ mock.Mock }
 
-func (m *mockRoleRepository) RoleHasPermission(roleID uuid.UUID, code rolesDomain.PermissionCode) (bool, error) {
-	args := m.Called(roleID, code)
+func (m *mockRoleRepository) RoleHasPermission(ctx context.Context, roleID uuid.UUID, code rolesDomain.PermissionCode) (bool, error) {
+	args := m.Called(ctx, roleID, code)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *mockRoleRepository) Create(role *rolesDomain.RoleEntity) error {
-	return m.Called(role).Error(0)
+func (m *mockRoleRepository) Create(ctx context.Context, role *rolesDomain.RoleEntity) error {
+	return m.Called(ctx, role).Error(0)
 }
 
-func (m *mockRoleRepository) GetByID(id uuid.UUID) (*rolesDomain.RoleEntity, error) {
-	args := m.Called(id)
+func (m *mockRoleRepository) GetByID(ctx context.Context, id uuid.UUID) (*rolesDomain.RoleEntity, error) {
+	args := m.Called(ctx, id)
 	if role := args.Get(0); role != nil {
 		return role.(*rolesDomain.RoleEntity), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (m *mockRoleRepository) GetByName(name string) (*rolesDomain.RoleEntity, error) {
-	args := m.Called(name)
+func (m *mockRoleRepository) GetByName(ctx context.Context, name string) (*rolesDomain.RoleEntity, error) {
+	args := m.Called(ctx, name)
 	if role := args.Get(0); role != nil {
 		return role.(*rolesDomain.RoleEntity), args.Error(1)
 	}
@@ -89,34 +89,34 @@ func (m *mockRoleRepository) List(ctx context.Context, limit, offset int) ([]rol
 	return roles, args.Get(1).(int64), args.Error(2)
 }
 
-func (m *mockRoleRepository) Update(role *rolesDomain.RoleEntity) error {
-	return m.Called(role).Error(0)
+func (m *mockRoleRepository) Update(ctx context.Context, role *rolesDomain.RoleEntity) error {
+	return m.Called(ctx, role).Error(0)
 }
 
-func (m *mockRoleRepository) Delete(id uuid.UUID) error {
-	return m.Called(id).Error(0)
+func (m *mockRoleRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return m.Called(ctx, id).Error(0)
 }
 
-func (m *mockRoleRepository) CountPermissionsByIDs(ids []uuid.UUID) (int64, error) {
-	args := m.Called(ids)
+func (m *mockRoleRepository) CountPermissionsByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
+	args := m.Called(ctx, ids)
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (m *mockRoleRepository) ReplacePermissions(roleID uuid.UUID, permissionIDs []uuid.UUID) error {
-	return m.Called(roleID, permissionIDs).Error(0)
+func (m *mockRoleRepository) ReplacePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error {
+	return m.Called(ctx, roleID, permissionIDs).Error(0)
 }
 
 var _ UserRepository = (*mockUserRepository)(nil)
 var _ rolesDomainRepository = (*mockRoleRepository)(nil)
 
 type rolesDomainRepository interface {
-	RoleHasPermission(uuid.UUID, rolesDomain.PermissionCode) (bool, error)
-	Create(*rolesDomain.RoleEntity) error
-	GetByID(uuid.UUID) (*rolesDomain.RoleEntity, error)
-	GetByName(string) (*rolesDomain.RoleEntity, error)
+	RoleHasPermission(context.Context, uuid.UUID, rolesDomain.PermissionCode) (bool, error)
+	Create(context.Context, *rolesDomain.RoleEntity) error
+	GetByID(context.Context, uuid.UUID) (*rolesDomain.RoleEntity, error)
+	GetByName(context.Context, string) (*rolesDomain.RoleEntity, error)
 	List(context.Context, int, int) ([]rolesDomain.RoleEntity, int64, error)
-	Update(*rolesDomain.RoleEntity) error
-	Delete(uuid.UUID) error
-	CountPermissionsByIDs([]uuid.UUID) (int64, error)
-	ReplacePermissions(uuid.UUID, []uuid.UUID) error
+	Update(context.Context, *rolesDomain.RoleEntity) error
+	Delete(context.Context, uuid.UUID) error
+	CountPermissionsByIDs(context.Context, []uuid.UUID) (int64, error)
+	ReplacePermissions(context.Context, uuid.UUID, []uuid.UUID) error
 }

@@ -4,6 +4,7 @@ package audit
 import (
 	"context"
 
+	"github.com/alisonsandrade/go-start-project/internal/platform/database"
 	"gorm.io/gorm"
 )
 
@@ -21,12 +22,12 @@ func NewAuditRepository(db *gorm.DB) AuditRepository {
 }
 
 func (r *auditRepository) Create(ctx context.Context, log *Log) error {
-	return r.db.WithContext(ctx).Create(log).Error
+	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Create(log).Error
 }
 
 func (r *auditRepository) List(ctx context.Context, limit, offset int) ([]Log, error) {
 	var logs []Log
-	err := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).

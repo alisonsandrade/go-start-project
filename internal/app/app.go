@@ -27,7 +27,9 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/platform"
 	"github.com/alisonsandrade/go-start-project/internal/platform/database"
 	"github.com/alisonsandrade/go-start-project/internal/roles"
+	"github.com/alisonsandrade/go-start-project/internal/tenants"
 	"github.com/alisonsandrade/go-start-project/internal/users"
+	"github.com/alisonsandrade/go-start-project/pkg/token"
 )
 
 type App struct {
@@ -70,6 +72,7 @@ func New() (*App, error) {
 	userRepo := users.NewUserRepository(db)
 	tokenRepo := auth.NewTokenRepository(db)
 	roleRepo := roles.NewRoleRepository(db)
+	tenantRepo := tenants.NewRepository(db)
 
 	// Registra o middleware de auditoria antes das rotas
 	r.Use(audit.Middleware(auditRepo, cfg.JWTSecret))
@@ -80,9 +83,14 @@ func New() (*App, error) {
 	authService := auth.NewAuthService(userRepo, tokenRepo, cfg, emailService)
 	userService := users.NewUserService(userRepo, roleRepo)
 	roleService := roles.NewRoleService(roleRepo)
+	tenantService := tenants.NewService(tenantRepo)
 
 	// --- SEED DO ADMIN INICIAL ---
-	ctx := context.Background()
+	ctx := context.WithValue(
+		context.Background(),
+		token.ClaimsContextKey,
+		&token.CustomClaims{TenantID: token.DefaultTenantID},
+	)
 	if err := userService.SeedDefaultAdmin(
 		ctx,
 		cfg.AdminSeed.Name,
@@ -95,12 +103,14 @@ func New() (*App, error) {
 	authHandler := auth.NewAuthHandler(authService)
 	userHandler := users.NewUserHandler(userService)
 	roleHandler := roles.NewRoleHandler(roleService)
+	tenantHandler := tenants.NewHandler(tenantService)
 
 	// 5. Route registration by domain
 	r.Route("/api", func(api chi.Router) {
 		api.Mount("/auth", authHandler.AuthRoutes(cfg))
 		api.Mount("/users", userHandler.Routes(cfg, roleRepo))
 		api.Mount("/roles", roleHandler.Routes(cfg, roleRepo))
+		api.Mount("/tenants", tenantHandler.Routes(cfg, roleRepo))
 	})
 
 	// Health check handlers

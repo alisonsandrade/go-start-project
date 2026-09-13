@@ -13,13 +13,14 @@ import (
 
 // RoleService defines the business operations for managing roles
 type RoleService interface {
-	Create(role *domain.RoleEntity) (*domain.RoleEntity, error)
-	GetByID(id uuid.UUID) (*domain.RoleEntity, error)
+	Create(ctx context.Context, role *domain.RoleEntity) (*domain.RoleEntity, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.RoleEntity, error)
 	List(ctx context.Context, params pagination.Params) (pagination.PageResult[domain.RoleEntity], error)
-	Update(role *domain.RoleEntity) (*domain.RoleEntity, error)
-	Delete(id uuid.UUID) error
+	Update(ctx context.Context, role *domain.RoleEntity) (*domain.RoleEntity, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	ReplacePermissions(
+		ctx context.Context,
 		roleID uuid.UUID,
 		permissionIDs []uuid.UUID,
 	) error
@@ -37,10 +38,10 @@ func NewRoleService(repo RoleRepository) RoleService {
 }
 
 // Create creates a new role ensuring name uniqueness.
-func (s *roleService) Create(role *domain.RoleEntity) (*domain.RoleEntity, error) {
+func (s *roleService) Create(ctx context.Context, role *domain.RoleEntity) (*domain.RoleEntity, error) {
 	role.Name = domain.NormalizeRoleName(role.Name)
 
-	_, err := s.repo.GetByName(role.Name)
+	_, err := s.repo.GetByName(ctx, role.Name)
 
 	if err == nil {
 		return nil, ErrRoleAlreadyExists
@@ -50,7 +51,7 @@ func (s *roleService) Create(role *domain.RoleEntity) (*domain.RoleEntity, error
 		return nil, err
 	}
 
-	if err := s.repo.Create(role); err != nil {
+	if err := s.repo.Create(ctx, role); err != nil {
 		return nil, err
 	}
 
@@ -59,8 +60,8 @@ func (s *roleService) Create(role *domain.RoleEntity) (*domain.RoleEntity, error
 
 // GetByID returns a role by its UUID, translating persistence errors into
 // errors. A missing record becomes ErrRoleNotFound
-func (s *roleService) GetByID(id uuid.UUID) (*domain.RoleEntity, error) {
-	role, err := s.repo.GetByID(id)
+func (s *roleService) GetByID(ctx context.Context, id uuid.UUID) (*domain.RoleEntity, error) {
+	role, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrRoleNotFound
@@ -81,8 +82,8 @@ func (s *roleService) List(ctx context.Context, params pagination.Params) (pagin
 }
 
 // Update updates an existing role.
-func (s *roleService) Update(role *domain.RoleEntity) (*domain.RoleEntity, error) {
-	existingRole, err := s.repo.GetByID(role.ID)
+func (s *roleService) Update(ctx context.Context, role *domain.RoleEntity) (*domain.RoleEntity, error) {
+	existingRole, err := s.repo.GetByID(ctx, role.ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrRoleNotFound
@@ -95,16 +96,16 @@ func (s *roleService) Update(role *domain.RoleEntity) (*domain.RoleEntity, error
 		return nil, ErrSystemRoleImmutable
 	}
 
-	if err := s.repo.Update(role); err != nil {
+	if err := s.repo.Update(ctx, role); err != nil {
 		return nil, err
 	}
 
-	return s.repo.GetByID(role.ID)
+	return s.repo.GetByID(ctx, role.ID)
 }
 
 // Delete removes a role.
-func (s *roleService) Delete(id uuid.UUID) error {
-	role, err := s.repo.GetByID(id)
+func (s *roleService) Delete(ctx context.Context, id uuid.UUID) error {
+	role, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrRoleNotFound
@@ -117,15 +118,16 @@ func (s *roleService) Delete(id uuid.UUID) error {
 		return ErrSystemRoleImmutable
 	}
 
-	return s.repo.Delete(id)
+	return s.repo.Delete(ctx, id)
 }
 
 // ReplacePermissions replaces all permissions assigned to a role.
 func (s *roleService) ReplacePermissions(
+	ctx context.Context,
 	roleID uuid.UUID,
 	permissionIDs []uuid.UUID,
 ) error {
-	role, err := s.repo.GetByID(roleID)
+	role, err := s.repo.GetByID(ctx, roleID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrRoleNotFound
@@ -141,10 +143,10 @@ func (s *roleService) ReplacePermissions(
 	uniquePermissionIDs := uniqueUUIDs(permissionIDs)
 
 	if len(uniquePermissionIDs) == 0 {
-		return s.repo.ReplacePermissions(roleID, uniquePermissionIDs)
+		return s.repo.ReplacePermissions(ctx, roleID, uniquePermissionIDs)
 	}
 
-	count, err := s.repo.CountPermissionsByIDs(uniquePermissionIDs)
+	count, err := s.repo.CountPermissionsByIDs(ctx, uniquePermissionIDs)
 	if err != nil {
 		return err
 	}
@@ -154,6 +156,7 @@ func (s *roleService) ReplacePermissions(
 	}
 
 	return s.repo.ReplacePermissions(
+		ctx,
 		roleID,
 		uniquePermissionIDs,
 	)

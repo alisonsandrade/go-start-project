@@ -7,6 +7,8 @@ import (
 
 	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
+	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +23,9 @@ func setupTokenTestDB(t *testing.T) *gorm.DB {
 	err = db.Exec(`
 		CREATE TABLE refresh_tokens (
 			id TEXT PRIMARY KEY,
+			tenant_id TEXT NOT NULL,
+			updated_at DATETIME,
+			deleted_at DATETIME,
 			user_id TEXT NOT NULL,
 			token TEXT NOT NULL UNIQUE,
 			expires_at DATETIME NOT NULL,
@@ -35,33 +40,30 @@ func setupTokenTestDB(t *testing.T) *gorm.DB {
 func TestTokenRepository_AllOperations(t *testing.T) {
 	db := setupTokenTestDB(t)
 	repo := auth.NewTokenRepository(db)
-	ctx := context.Background()
+	ctx := context.WithValue(context.Background(), token.ClaimsContextKey, &token.CustomClaims{TenantID: token.DefaultTenantID})
 
 	userID1 := uuid.New()
 	userID2 := uuid.New()
 
 	token1 := &domain.RefreshToken{
-		ID:        uuid.New(),
-		UserID:    userID1,
-		Token:     "token-abc-123",
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-		CreatedAt: time.Now(),
+		BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New(), CreatedAt: time.Now()}},
+		UserID:          userID1,
+		Token:           "token-abc-123",
+		ExpiresAt:       time.Now().Add(24 * time.Hour),
 	}
 
 	token2 := &domain.RefreshToken{
-		ID:        uuid.New(),
-		UserID:    userID1,
-		Token:     "token-def-456",
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-		CreatedAt: time.Now(),
+		BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New(), CreatedAt: time.Now()}},
+		UserID:          userID1,
+		Token:           "token-def-456",
+		ExpiresAt:       time.Now().Add(24 * time.Hour),
 	}
 
 	token3 := &domain.RefreshToken{
-		ID:        uuid.New(),
-		UserID:    userID2,
-		Token:     "token-ghi-789",
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-		CreatedAt: time.Now(),
+		BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New(), CreatedAt: time.Now()}},
+		UserID:          userID2,
+		Token:           "token-ghi-789",
+		ExpiresAt:       time.Now().Add(24 * time.Hour),
 	}
 
 	t.Run("Create and FindByToken succeed", func(t *testing.T) {

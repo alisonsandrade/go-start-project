@@ -9,6 +9,7 @@ import (
 
 	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
 	"github.com/alisonsandrade/go-start-project/internal/config"
+	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
 	usersDomain "github.com/alisonsandrade/go-start-project/internal/users/domain"
 	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/mailer"
@@ -165,7 +166,7 @@ func (s *authService) generateAuthResponse(ctx context.Context, user *usersDomai
 	}
 
 	accessToken, err := token.GenerateToken(
-		user.ID, email.String(), user.RoleID, s.cfg.JWTSecret, expHours,
+		user.ID, email.String(), user.RoleID, s.cfg.JWTSecret, expHours, user.TenantID,
 	)
 	if err != nil {
 		return nil, err
@@ -206,10 +207,10 @@ func (s *authService) ForgotPassword(ctx context.Context, email string) error {
 
 	// Cria a entidade do seu domínio usando a struct que você já tem
 	resetToken := &domain.RefreshToken{
-		ID:        uuid.New(),
-		UserID:    user.ID,
-		Token:     rawToken,
-		ExpiresAt: time.Now().UTC().Add(15 * time.Minute),
+		BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}},
+		UserID:          user.ID,
+		Token:           rawToken,
+		ExpiresAt:       time.Now().UTC().Add(15 * time.Minute),
 	}
 
 	if err := s.tokenRepo.Create(ctx, resetToken); err != nil {

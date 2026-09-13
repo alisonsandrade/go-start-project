@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
 	rolesDomain "github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
 	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
@@ -116,7 +117,10 @@ func TestUserService_DeleteUser(t *testing.T) {
 func TestUserService_ListUsers(t *testing.T) {
 	ctx := context.Background()
 	params := pagination.Params{Page: 2, Limit: 2}
-	users := []domain.User{{ID: uuid.New(), Name: "Alice"}, {ID: uuid.New(), Name: "Bob"}}
+	users := []domain.User{
+		{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Name: "Alice"},
+		{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Name: "Bob"},
+	}
 	repo := new(mockUserRepository)
 	repo.On("List", ctx, params.Limit, params.Offset()).Return(users, int64(5), nil).Once()
 
@@ -132,12 +136,12 @@ func TestUserService_ListUsers(t *testing.T) {
 func TestUserService_CreateUserAsAdmin(t *testing.T) {
 	ctx := context.Background()
 	roleID := uuid.New()
-	role := &rolesDomain.RoleEntity{ID: roleID, Name: "EDITOR"}
+	role := &rolesDomain.RoleEntity{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: roleID}}, Name: "EDITOR"}
 
 	t.Run("creates a user with a valid role and email", func(t *testing.T) {
 		repo := new(mockUserRepository)
 		roleRepo := new(mockRoleRepository)
-		roleRepo.On("GetByID", roleID).Return(role, nil).Once()
+		roleRepo.On("GetByID", ctx, roleID).Return(role, nil).Once()
 		repo.On("FindByEmail", ctx, "new@example.com").Return(nil, gorm.ErrRecordNotFound).Once()
 		repo.On("Create", ctx, mock.AnythingOfType("*domain.User")).Return(nil).Once()
 		dto := domain.CreateUserRequest{UserBase: domain.UserBase{Name: "New User", Email: "new@example.com"}, Password: "StrongPass1", RoleID: roleID}
@@ -153,7 +157,7 @@ func TestUserService_CreateUserAsAdmin(t *testing.T) {
 
 	t.Run("rejects an invalid role", func(t *testing.T) {
 		roleRepo := new(mockRoleRepository)
-		roleRepo.On("GetByID", roleID).Return(nil, errors.New("role not found")).Once()
+		roleRepo.On("GetByID", ctx, roleID).Return(nil, errors.New("role not found")).Once()
 
 		result, err := NewUserService(new(mockUserRepository), roleRepo).CreateUserAsAdmin(ctx, domain.CreateUserRequest{UserBase: domain.UserBase{Email: "new@example.com"}, Password: "StrongPass1", RoleID: roleID})
 
@@ -164,7 +168,7 @@ func TestUserService_CreateUserAsAdmin(t *testing.T) {
 	t.Run("rejects an existing email", func(t *testing.T) {
 		repo := new(mockUserRepository)
 		roleRepo := new(mockRoleRepository)
-		roleRepo.On("GetByID", roleID).Return(role, nil).Once()
+		roleRepo.On("GetByID", ctx, roleID).Return(role, nil).Once()
 		repo.On("FindByEmail", ctx, "new@example.com").Return(newServiceTestUser(t, roleID), nil).Once()
 
 		result, err := NewUserService(repo, roleRepo).CreateUserAsAdmin(ctx, domain.CreateUserRequest{UserBase: domain.UserBase{Email: "new@example.com"}, Password: "StrongPass1", RoleID: roleID})
@@ -180,7 +184,7 @@ func TestUserService_CreateUserAsAdmin(t *testing.T) {
 
 		assert.Nil(t, result)
 		assert.ErrorIs(t, err, pkgDomain.ErrInvalidEmail)
-		roleRepo.AssertNotCalled(t, "GetByID", mock.Anything)
+		roleRepo.AssertNotCalled(t, "GetByID", mock.Anything, mock.Anything)
 	})
 }
 
@@ -214,12 +218,12 @@ func TestUserService_SoftDeleteUserAsAdmin(t *testing.T) {
 
 func TestUserService_SeedDefaultAdmin(t *testing.T) {
 	ctx := context.Background()
-	role := &rolesDomain.RoleEntity{ID: uuid.New(), Name: "ADMIN"}
+	role := &rolesDomain.RoleEntity{BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}}, Name: "ADMIN"}
 
 	t.Run("creates the default admin", func(t *testing.T) {
 		repo := new(mockUserRepository)
 		roleRepo := new(mockRoleRepository)
-		roleRepo.On("GetByName", "ADMIN").Return(role, nil).Once()
+		roleRepo.On("GetByName", ctx, "ADMIN").Return(role, nil).Once()
 		repo.On("FindByEmail", ctx, "admin@example.com").Return(nil, nil).Once()
 		repo.On("Create", ctx, mock.AnythingOfType("*domain.User")).Return(nil).Once()
 
@@ -231,7 +235,7 @@ func TestUserService_SeedDefaultAdmin(t *testing.T) {
 	t.Run("is idempotent when admin already exists", func(t *testing.T) {
 		repo := new(mockUserRepository)
 		roleRepo := new(mockRoleRepository)
-		roleRepo.On("GetByName", "ADMIN").Return(role, nil).Once()
+		roleRepo.On("GetByName", ctx, "ADMIN").Return(role, nil).Once()
 		repo.On("FindByEmail", ctx, "admin@example.com").Return(newServiceTestUser(t, role.ID), nil).Once()
 
 		err := NewUserService(repo, roleRepo).SeedDefaultAdmin(ctx, "Admin", "admin@example.com", "StrongPass1")
@@ -242,7 +246,7 @@ func TestUserService_SeedDefaultAdmin(t *testing.T) {
 
 	t.Run("returns an error when admin role lookup fails", func(t *testing.T) {
 		roleRepo := new(mockRoleRepository)
-		roleRepo.On("GetByName", "ADMIN").Return(nil, errors.New("role lookup failed")).Once()
+		roleRepo.On("GetByName", ctx, "ADMIN").Return(nil, errors.New("role lookup failed")).Once()
 
 		err := NewUserService(new(mockUserRepository), roleRepo).SeedDefaultAdmin(ctx, "Admin", "admin@example.com", "StrongPass1")
 

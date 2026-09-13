@@ -2,6 +2,8 @@
 package roles
 
 import (
+	"context"
+
 	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -9,8 +11,8 @@ import (
 
 // PermissionRepository defines persistence operations for permissions.
 type PermissionRepository interface {
-	GetByIDs(ids []uuid.UUID) ([]domain.Permission, error)
-	List() ([]domain.Permission, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.Permission, error)
+	List(ctx context.Context) ([]domain.Permission, error)
 }
 
 type permissionRepository struct {
@@ -23,14 +25,14 @@ func NewPermissionRepository(db *gorm.DB) PermissionRepository {
 }
 
 // GetByIDs returns the permissions matching the provided UUIDs.
-func (r *permissionRepository) GetByIDs(ids []uuid.UUID) ([]domain.Permission, error) {
+func (r *permissionRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.Permission, error) {
 	if len(ids) == 0 {
 		return []domain.Permission{}, nil
 	}
 
 	var permissions []domain.Permission
 
-	if err := r.db.
+	if err := r.db.WithContext(ctx).
 		Where("id IN ?", ids).
 		Find(&permissions).Error; err != nil {
 		return nil, err
@@ -40,10 +42,10 @@ func (r *permissionRepository) GetByIDs(ids []uuid.UUID) ([]domain.Permission, e
 }
 
 // List returns all permissions ordered by code.
-func (r *permissionRepository) List() ([]domain.Permission, error) {
+func (r *permissionRepository) List(ctx context.Context) ([]domain.Permission, error) {
 	var permissions []domain.Permission
 
-	if err := r.db.
+	if err := r.db.WithContext(ctx).
 		Order("code ASC").
 		Find(&permissions).Error; err != nil {
 		return nil, err

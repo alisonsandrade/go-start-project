@@ -140,7 +140,7 @@ func (s *userService) CreateUserAsAdmin(
 		return nil, err
 	}
 
-	_, err = s.roleRepo.GetByID(userDTO.RoleID)
+	_, err = s.roleRepo.GetByID(ctx, userDTO.RoleID)
 	if err != nil {
 		return nil, ErrInvalidRole
 	}

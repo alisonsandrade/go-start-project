@@ -41,7 +41,7 @@ Boilerplate de API RESTful de alta performance em **Go**, estruturado sob os pri
 
 ## 🏛️ Arquitetura & Diferenciais de Engenharia
 
-O ecossistema é dividido em contextos isolados (`internal/auth`, `internal/users`, `internal/roles`, `internal/audit`):
+O ecossistema é dividido em contextos isolados (`internal/auth`, `internal/users`, `internal/roles`, `internal/tenants`, `internal/audit`):
 
 ```text
 HTTP Request → Middleware (RateLimit, JWT, Audit) → Handler → Service → Repository → DB
@@ -58,6 +58,7 @@ HTTP Request → Middleware (RateLimit, JWT, Audit) → Handler → Service → 
 * **Value Objects com Validação Rica (`pkg/domain`)**: `Email` e `Password` encapsulam validação, normalização e hashing antes de tocar a camada de dados.
 * **Auditoria Assíncrona (`internal/audit`)**: Middleware que intercepta ações mutativas (`POST`, `PUT`, `DELETE`), extrai o autor via Claims/Bearer Token e grava registros em background sem onerar a latência HTTP.
 * **Prevenção de Account Enumeration**: Rotas públicas de recuperação de senha e cadastro respondem de forma indistinguível para e-mails inexistentes.
+* **Multi-tenancy**: Usuários, roles, refresh tokens e auditoria carregam `tenant_id`. O escopo é aplicado nas queries pelo contexto do JWT, e o `TenantID` também é registrado nos logs de auditoria.
 
 ---
 
@@ -176,6 +177,11 @@ Swagger interativo em: **http://localhost:8000/swagger/index.html**
 │   │   ├── permission_repository.go   # Consultas de permissões
 │   │   ├── repository.go              # Associação many-to-many de papéis
 │   │   └── service.go                 # Gestão de permissões e regras imutáveis
+│   ├── tenants/                       # Cadastro e administração de empresas/instituições
+│   │   ├── domain/                    # Tenant, DTOs e settings JSON
+│   │   ├── handler.go                 # Rotas de onboarding e administração
+│   │   ├── repository.go              # Persistência e paginação
+│   │   └── service.go                 # Validação e regras de tenant
 │   └── users/                         # Gestão de Usuários
 │       ├── domain/                    # Entidade User com hooks de validação GORM
 │       ├── handler.go                 # Rotas /me e administrativas
@@ -229,6 +235,9 @@ Tabelas versionadas sequencialmente em `migrations/`:
 * `000002_create_refresh_tokens_table`: Sessões persistidas de refresh token.
 * `000003_create_rbac_tables`: Tabelas `roles`, `permissions` e pivot `role_permissions`.
 * `000007_create_audit_logs`: Tabela `audit_logs` com índices em `user_id` e `created_at`.
+* `000008_add_tenant_scope`: Adiciona `tenant_id` às tabelas tenant-aware.
+* `000009_create_tenants_table`: Cria o cadastro de empresas/instituições e as FKs de tenant.
+* `000010_add_tenant_manage_permission`: Cria `tenant:manage` e concede a permissão ao role `ADMIN`.
 
 Comandos:
 
@@ -280,6 +289,34 @@ make migrate-down    # Reverte a última migração aplicada
 | `DELETE` | `/api/roles/{id}` | Remove perfil (exceto papéis `is_system`) | Permissão `role:delete` |
 | `PUT` | `/api/roles/{id}/permissions` | Substitui a lista de permissões associadas ao perfil | Permissão `role:assign-permissions` |
 
+### 🏢 Tenants (`/api/tenants`)
+
+Um tenant representa uma empresa ou instituição. O campo `document` armazena o identificador oficial normalizado (por exemplo, CNPJ sem pontuação) e `settings` armazena configurações flexíveis em JSONB.
+
+| Método | Rota | Descrição | Acesso |
+| --- | --- | --- | --- |
+| `POST` | `/api/tenants` | Cria uma empresa/instituição | Permissão `tenant:manage` |
+| `GET` | `/api/tenants` | Lista tenants com `page` e `limit` | Permissão `tenant:manage` |
+| `GET` | `/api/tenants/{id}` | Consulta um tenant por UUID | Permissão `tenant:manage` |
+| `PUT` | `/api/tenants/{id}` | Atualiza nome, documento ou settings | Permissão `tenant:manage` |
+| `DELETE` | `/api/tenants/{id}` | Exclusão lógica de tenant | Permissão `tenant:manage` |
+| `GET` | `/api/tenants/me` | Consulta o tenant associado ao JWT atual | JWT |
+
+Exemplo de criação:
+
+```json
+{
+    "name": "Empresa Exemplo LTDA",
+    "document": "12.345.678/0001-90",
+    "settings": {
+        "locale": "pt-BR",
+        "timezone": "America/Sao_Paulo"
+    }
+}
+```
+
+O cadastro e as operações administrativas exigem a permissão `tenant:manage`, concedida ao role `ADMIN` pela migration `000010`. Usuários comuns podem consultar somente `/api/tenants/me`.
+
 ---
 
 ## 🔒 Mecanismos de Segurança e Concorrência
@@ -288,6 +325,7 @@ make migrate-down    # Reverte a última migração aplicada
 2. **Hashes Unidirecionais para Tokens de Recuperação**: O token temporário enviado ao e-mail do usuário não fica gravado no banco de dados. Armazena-se apenas o hash `SHA-256` da string, neutralizando o uso dos tokens em eventuais vazamentos de dumps de banco.
 3. **Invalidação de Sessão em Cascata**: Ao executar um reset de senha, todos os *Refresh Tokens* emitidos para o `user_id` são expurgados do banco, deslogando instantaneamente qualquer invasor que esteja usando uma sessão anterior.
 4. **Resiliência do Pipeline de Mensageria**: Caso o servidor precise ser reiniciado ou atualizado, o `sync.WaitGroup` garante que requisições de e-mail em curso sejam processadas até o fim antes da destruição dos canais de memória.
+5. **Isolamento por Tenant**: O `tenant_id` é extraído das claims JWT e aplicado nas operações de persistência. O middleware de autenticação pública aceita `X-Tenant-ID` para os fluxos de entrada, enquanto tokens emitidos carregam o tenant efetivo do usuário.
 
 ---
 

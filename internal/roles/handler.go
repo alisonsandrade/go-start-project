@@ -8,6 +8,7 @@ import (
 
 	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/config"
+	domainBase "github.com/alisonsandrade/go-start-project/internal/domain"
 	"github.com/alisonsandrade/go-start-project/internal/platform"
 	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
@@ -70,7 +71,7 @@ func (h *RoleHandler) GetRoleByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role, err := h.roleService.GetByID(roleID)
+	role, err := h.roleService.GetByID(r.Context(), roleID)
 	if err != nil {
 		if errors.Is(err, ErrRoleNotFound) {
 			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
@@ -110,7 +111,7 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 	}
 
-	createdRole, err := h.roleService.Create(role)
+	createdRole, err := h.roleService.Create(r.Context(), role)
 	if err != nil {
 		if errors.Is(err, ErrRoleAlreadyExists) {
 			platform.ErrorJSON(w, http.StatusConflict, err.Error())
@@ -154,12 +155,16 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	role := &domain.RoleEntity{
-		ID:          roleID,
+		BaseModelTenant: domainBase.BaseModelTenant{
+			BaseModel: domainBase.BaseModel{
+				ID: roleID,
+			},
+		},
 		Name:        req.Name,
 		Description: req.Description,
 	}
 
-	updatedRole, err := h.roleService.Update(role)
+	updatedRole, err := h.roleService.Update(r.Context(), role)
 	if err != nil {
 		if errors.Is(err, ErrRoleNotFound) {
 			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
@@ -198,7 +203,7 @@ func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.roleService.Delete(roleID)
+	err = h.roleService.Delete(r.Context(), roleID)
 	if err != nil {
 		if errors.Is(err, ErrRoleNotFound) {
 			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
@@ -249,6 +254,7 @@ func (h *RoleHandler) ReplacePermissions(w http.ResponseWriter, r *http.Request)
 	}
 
 	err = h.roleService.ReplacePermissions(
+		r.Context(),
 		roleID,
 		req.PermissionIDs,
 	)

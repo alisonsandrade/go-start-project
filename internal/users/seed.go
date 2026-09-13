@@ -13,7 +13,7 @@ import (
 
 // SeedDefaultAdmin cria o admin inicial se ele ainda não existir na base
 func (s *userService) SeedDefaultAdmin(ctx context.Context, name, rawEmail, rawPassword string) error {
-	adminRole, err := s.roleRepo.GetByName("ADMIN")
+	adminRole, err := s.roleRepo.GetByName(ctx, "ADMIN")
 	if err != nil {
 		return fmt.Errorf("role ADMIN not search? %w", err)
 	}

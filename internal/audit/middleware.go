@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alisonsandrade/go-start-project/internal/auth"
+	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/google/uuid"
 )
@@ -66,9 +67,13 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 
 			// 1. Tenta extrair do context
 			var userID *uuid.UUID
+			tenantID := uuid.Nil
 			if claims, ok := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims); ok && claims != nil {
-				uid := claims.UserID
-				userID = &uid
+				tenantID = claims.TenantID
+				if claims.UserID != uuid.Nil {
+					uid := claims.UserID
+					userID = &uid
+				}
 			}
 
 			// 2. Se o context for nulo devido à cópia rasa do Go, extrai direto do Bearer Token
@@ -77,6 +82,7 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 				if strings.HasPrefix(authHeader, "Bearer ") {
 					tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 					if claims, err := token.ValidateToken(tokenStr, jwtSecret); err == nil && claims != nil {
+						tenantID = claims.TenantID
 						uid := claims.UserID
 						userID = &uid
 					}
@@ -84,16 +90,17 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 			}
 
 			record := &Log{
-				UserID:    userID,
-				Action:    r.Method,
-				Resource:  path,
-				IPAddress: ip,
-				UserAgent: r.UserAgent(),
-				CreatedAt: time.Now().UTC(),
+				BaseModelTenant: baseDomain.BaseModelTenant{TenantID: tenantID},
+				UserID:          userID,
+				Action:          r.Method,
+				Resource:        path,
+				IPAddress:       ip,
+				UserAgent:       r.UserAgent(),
 			}
 
+			requestContext := r.Context()
 			go func(entry *Log) {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(requestContext, 5*time.Second)
 				defer cancel()
 
 				if err := repo.Create(ctx, entry); err != nil {
