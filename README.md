@@ -58,7 +58,8 @@ HTTP Request → Middleware (RateLimit, JWT, Audit) → Handler → Service → 
 * **Value Objects com Validação Rica (`pkg/domain`)**: `Email` e `Password` encapsulam validação, normalização e hashing antes de tocar a camada de dados.
 * **Auditoria Assíncrona (`internal/audit`)**: Middleware que intercepta ações mutativas (`POST`, `PUT`, `DELETE`), extrai o autor via Claims/Bearer Token e grava registros em background sem onerar a latência HTTP.
 * **Prevenção de Account Enumeration**: Rotas públicas de recuperação de senha e cadastro respondem de forma indistinguível para e-mails inexistentes.
-* **Multi-tenancy**: Usuários, roles, refresh tokens e auditoria carregam `tenant_id`. O escopo é aplicado nas queries pelo contexto do JWT, e o `TenantID` também é registrado nos logs de auditoria.
+* **Multi-tenancy**: Cada usuário pertence a um único tenant. Usuários, roles, refresh tokens e auditoria carregam `tenant_id`; o escopo é aplicado nas queries pelo contexto do JWT, e o `TenantID` também é registrado nos logs de auditoria.
+* **Usuários pendentes**: O cadastro pode ser persistido antes da confirmação do e-mail. O campo `email_verified` representa esse estado sem criar um segundo tipo de usuário.
 
 ---
 
@@ -238,6 +239,7 @@ Tabelas versionadas sequencialmente em `migrations/`:
 * `000008_add_tenant_scope`: Adiciona `tenant_id` às tabelas tenant-aware.
 * `000009_create_tenants_table`: Cria o cadastro de empresas/instituições e as FKs de tenant.
 * `000010_add_tenant_manage_permission`: Cria `tenant:manage` e concede a permissão ao role `ADMIN`.
+* `000012_add_user_email_verification`: Adiciona `email_verified` aos usuários para representar cadastros ainda não confirmados.
 
 Comandos:
 
@@ -276,7 +278,19 @@ make migrate-down    # Reverte a última migração aplicada
 | `POST` | `/api/users` | Cadastro administrativo de novos usuários | Permissão `user:create` |
 | `GET` | `/api/users/{id}` | Busca perfil completo de usuário por UUID | Permissão `user:read` |
 | `PUT` | `/api/users/{id}` | Edição de permissões/dados de outro usuário | Permissão `user:update` |
+| `PATCH` | `/api/users/{id}/tenant` | Move o usuário para outro tenant e aplica uma role desse tenant | Permissão `user:update` |
 | `DELETE` | `/api/users/{id}` | Desativação forçada de usuário por UUID | Permissão `user:delete` |
+
+A aplicação usa um vínculo simples: cada usuário possui apenas um `tenant_id`. Para corrigir um cadastro feito no tenant errado, o administrador pode usar o endpoint de transferência informando também uma `role_id` existente no tenant de destino:
+
+```json
+{
+    "tenant_id": "00000000-0000-0000-0000-000000000002",
+    "role_id": "00000000-0000-0000-0000-000000000003"
+}
+```
+
+Tenant e role são validados na mesma transação. O usuário só é movido se ambos existirem e a role realmente pertencer ao tenant de destino.
 
 ### 🛡️ Papéis & Permissões (`/api/roles`)
 
