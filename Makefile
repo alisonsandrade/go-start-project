@@ -20,7 +20,7 @@ MIGRATIONS  := ./migrations
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)
 
 # .PHONY: declara alvos que NÃO são arquivos (evita conflito com nomes de arquivo)
-.PHONY: help run build clean tidy fmt vet test \
+.PHONY: help run build dev clean tidy fmt vet test \
         docker-up docker-down docker-logs \
         migrate-up migrate-down migrate-create migrate-force \
         swag
@@ -46,8 +46,9 @@ run: ## Sobe a aplicacao (go run)
 build: ## Compila o binario em ./bin
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
-dev: ## Executa o live reload forçando o caminho correto
-	air --build.cmd "go build -o ./tmp/main.exe ./cmd/api" --build.bin "tmp/main.exe"
+dev: ## Executa o live reload com a configuracao do Air
+	rm -f ./tmp/main ./tmp/main.exe
+	air -c .air.toml
 
 clean: ## Remove artefatos de build
 	rm -rf bin/
