@@ -46,6 +46,11 @@ type AdminUpdateUserRequest struct {
 	IsActive *bool      `json:"is_active,omitempty"`
 }
 
+type ChangeUserTenantRequest struct {
+	TenantID uuid.UUID `json:"tenant_id" validate:"required"`
+	RoleID   uuid.UUID `json:"role_id" validate:"required"`
+}
+
 type UserResponse struct {
 	ID     uuid.UUID `json:"id"`
 	Name   string    `json:"name"`

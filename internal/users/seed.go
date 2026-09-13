@@ -37,11 +37,12 @@ func (s *userService) SeedDefaultAdmin(ctx context.Context, name, rawEmail, rawP
 	}
 
 	adminUser := &usersDomain.User{
-		Name:     name,
-		Email:    email,
-		Password: password,
-		RoleID:   adminRole.ID,
-		IsActive: true,
+		Name:          name,
+		Email:         email,
+		Password:      password,
+		RoleID:        adminRole.ID,
+		IsActive:      true,
+		EmailVerified: true,
 	}
 
 	if err := s.userRepo.Create(ctx, adminUser); err != nil {

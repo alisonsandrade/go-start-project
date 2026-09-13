@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/config"
@@ -18,6 +19,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type UserHandler struct {
@@ -348,6 +350,49 @@ func (h *UserHandler) SoftDeleteUserAsAdmin(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// ChangeUserTenant moves a user to another tenant and assigns a role there.
+// @Summary      Alterar tenant do usuário
+// @Description  Move um usuário para outro tenant e aplica uma role pertencente ao destino.
+// @Tags         Admin
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "User ID"
+// @Param        payload body domain.ChangeUserTenantRequest true "Tenant e role de destino"
+// @Success      204
+// @Failure      400 {object} apiresponse.ErrorResponse
+// @Failure      401 {object} apiresponse.ErrorResponse
+// @Failure      403 {object} apiresponse.ErrorResponse
+// @Failure      404 {object} apiresponse.ErrorResponse
+// @Router       /api/users/{id}/tenant [patch]
+func (h *UserHandler) ChangeUserTenant(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	var dto domain.ChangeUserTenantRequest
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.userService.ChangeUserTenant(r.Context(), id, dto); err != nil {
+		switch {
+		case errors.Is(err, ErrUserNotFound), errors.Is(err, gorm.ErrRecordNotFound):
+			platform.ErrorJSON(w, http.StatusNotFound, "usuário, tenant ou role não encontrado")
+		case strings.Contains(err.Error(), "obrigatórios"), strings.Contains(err.Error(), "já pertence"):
+			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		default:
+			platform.ErrorJSON(w, http.StatusInternalServerError, "failed to change user tenant")
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 /**************************************************************************************************
 *										handler's routers user
 **************************************************************************************************/
@@ -374,6 +419,13 @@ func (h *UserHandler) Routes(cfg *config.Config, roleRepo roles.RoleRepository) 
 		admin.Put("/{id}", h.UpdateUserAsAdmin)
 		admin.Delete("/{id}", h.SoftDeleteUserAsAdmin)
 		admin.Get("/", h.ListUsers)
+		admin.Group(func(editor chi.Router) {
+			editor.Use(roles.RequirePermission(
+				roleRepo,
+				rolesDomain.PermissionUpdateUser,
+			))
+			editor.Patch("/{id}/tenant", h.ChangeUserTenant)
+		})
 	})
 
 	return r

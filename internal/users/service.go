@@ -38,6 +38,7 @@ type UserService interface {
 	ListUsers(ctx context.Context, params pagination.Params) (pagination.PageResult[domain.User], error)
 	CreateUserAsAdmin(ctx context.Context, dto domain.CreateUserRequest) (*domain.User, error)
 	UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto domain.AdminUpdateUserRequest) error
+	ChangeUserTenant(ctx context.Context, id uuid.UUID, dto domain.ChangeUserTenantRequest) error
 	SoftDeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error
 
 	// Seed
@@ -212,6 +213,19 @@ func (s *userService) UpdateUserAsAdmin(ctx context.Context, id uuid.UUID, dto d
 	}
 
 	return s.userRepo.Update(ctx, user)
+}
+
+func (s *userService) ChangeUserTenant(ctx context.Context, id uuid.UUID, dto domain.ChangeUserTenantRequest) error {
+	if dto.TenantID == uuid.Nil || dto.RoleID == uuid.Nil {
+		return errors.New("tenant_id e role_id são obrigatórios")
+	}
+	if err := s.userRepo.ChangeTenant(ctx, id, dto.TenantID, dto.RoleID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *userService) SoftDeleteUserAsAdmin(ctx context.Context, id uuid.UUID) error {

@@ -1440,6 +1440,73 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/users/{id}/tenant": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Move um usuário para outro tenant e aplica uma role pertencente ao destino.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Alterar tenant do usuário",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tenant e role de destino",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.ChangeUserTenantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1488,6 +1555,21 @@ const docTemplate = `{
                 "new_password": {
                     "type": "string",
                     "minLength": 8
+                }
+            }
+        },
+        "domain.ChangeUserTenantRequest": {
+            "type": "object",
+            "required": [
+                "role_id",
+                "tenant_id"
+            ],
+            "properties": {
+                "role_id": {
+                    "type": "string"
+                },
+                "tenant_id": {
+                    "type": "string"
                 }
             }
         },
@@ -1793,6 +1875,9 @@ const docTemplate = `{
                 },
                 "email": {
                     "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
                 },
                 "is_active": {
                     "type": "boolean"

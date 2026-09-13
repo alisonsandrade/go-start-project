@@ -19,6 +19,10 @@ func (m *mockUserRepository) Update(ctx context.Context, user *domain.User) erro
 	return m.Called(ctx, user).Error(0)
 }
 
+func (m *mockUserRepository) ChangeTenant(ctx context.Context, id, tenantID, roleID uuid.UUID) error {
+	return m.Called(ctx, id, tenantID, roleID).Error(0)
+}
+
 func (m *mockUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return m.Called(ctx, id).Error(0)
 }

@@ -65,6 +65,10 @@ func (m *mockUserService) UpdateUserAsAdmin(ctx context.Context, userID uuid.UUI
 	return m.Called(ctx, userID, dto).Error(0)
 }
 
+func (m *mockUserService) ChangeUserTenant(ctx context.Context, userID uuid.UUID, dto domain.ChangeUserTenantRequest) error {
+	return m.Called(ctx, userID, dto).Error(0)
+}
+
 func (m *mockUserService) SoftDeleteUserAsAdmin(ctx context.Context, userID uuid.UUID) error {
 	return m.Called(ctx, userID).Error(0)
 }

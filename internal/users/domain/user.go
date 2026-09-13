@@ -37,6 +37,7 @@ type User struct {
 	JobTitle                   string                 `gorm:"size:100" json:"job_title"`
 	Bio                        string                 `gorm:"type:text" json:"bio"`
 	IsActive                   bool                   `gorm:"default:true;not null" json:"is_active"`
+	EmailVerified              bool                   `gorm:"default:false;not null" json:"email_verified"`
 }
 
 // NewUser creates a new user instance with the provided details.
