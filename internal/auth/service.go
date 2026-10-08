@@ -139,7 +139,15 @@ func (s *authService) RefreshSession(ctx context.Context, refreshToken string) (
 		return nil, ErrInvalidRefreshToken
 	}
 
-	user, err := s.userRepo.FindByID(ctx, rt.UserID)
+	userCtx := ctx
+	if ctx.Value(token.ClaimsContextKey) == nil && rt.TenantID != uuid.Nil {
+		userCtx = context.WithValue(ctx, token.ClaimsContextKey, &token.CustomClaims{
+			UserID:   rt.UserID,
+			TenantID: rt.TenantID,
+		})
+	}
+
+	user, err := s.userRepo.FindByID(userCtx, rt.UserID)
 	if err != nil || user == nil {
 		return nil, ErrInvalidRefreshToken
 	}
@@ -171,10 +179,13 @@ func (s *authService) RefreshSession(ctx context.Context, refreshToken string) (
 	}
 
 	newRT := &domain.RefreshToken{
-		BaseModelTenant: baseDomain.BaseModelTenant{TenantID: user.TenantID},
-		UserID:          user.ID,
-		Token:           newRefreshTokenStr,
-		ExpiresAt:       time.Now().Add(time.Hour * 24 * 7),
+		BaseModelTenant: baseDomain.BaseModelTenant{
+			BaseModel: baseDomain.BaseModel{ID: uuid.New()},
+			TenantID:  user.TenantID,
+		},
+		UserID:    user.ID,
+		Token:     newRefreshTokenStr,
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
 	}
 
 	rotateFn := func(txCtx context.Context) error {
@@ -185,11 +196,11 @@ func (s *authService) RefreshSession(ctx context.Context, refreshToken string) (
 	}
 
 	if s.tm != nil {
-		if err := s.tm.Transaction(ctx, rotateFn); err != nil {
+		if err := s.tm.Transaction(userCtx, rotateFn); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := rotateFn(ctx); err != nil {
+		if err := rotateFn(userCtx); err != nil {
 			return nil, err
 		}
 	}
@@ -226,12 +237,24 @@ func (s *authService) generateAuthResponse(ctx context.Context, user *usersDomai
 	}
 
 	rt := &domain.RefreshToken{
-		BaseModelTenant: baseDomain.BaseModelTenant{TenantID: user.TenantID},
-		UserID:          user.ID,
-		Token:           refreshTokenStr,
-		ExpiresAt:       time.Now().Add(time.Hour * 24 * 7), // 7 dias
+		BaseModelTenant: baseDomain.BaseModelTenant{
+			BaseModel: baseDomain.BaseModel{ID: uuid.New()},
+			TenantID:  user.TenantID,
+		},
+		UserID:    user.ID,
+		Token:     refreshTokenStr,
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
 	}
-	if err := s.tokenRepo.Create(ctx, rt); err != nil {
+
+	tokenCtx := ctx
+	if ctx.Value(token.ClaimsContextKey) == nil && user.TenantID != uuid.Nil {
+		tokenCtx = context.WithValue(ctx, token.ClaimsContextKey, &token.CustomClaims{
+			UserID:   user.ID,
+			TenantID: user.TenantID,
+		})
+	}
+
+	if err := s.tokenRepo.Create(tokenCtx, rt); err != nil {
 		return nil, err
 	}
 
@@ -242,7 +265,7 @@ func (s *authService) generateAuthResponse(ctx context.Context, user *usersDomai
 	}, nil
 }
 
-// ForgotPassword return a code for user autenticated again on system
+// ForgotPassword return a code for user authenticated again on system
 func (s *authService) ForgotPassword(ctx context.Context, email string) error {
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil || user == nil {
@@ -264,8 +287,6 @@ func (s *authService) ForgotPassword(ctx context.Context, email string) error {
 		ExpiresAt: time.Now().UTC().Add(15 * time.Minute),
 	}
 
-	// Garante que o contexto da chamada tenha as claims do tenant do usuário encontrado,
-	// evitando erros de TenantScope ou BaseModelTenant.BeforeCreate em rotas públicas.
 	tokenCtx := ctx
 	if ctx.Value(token.ClaimsContextKey) == nil && user.TenantID != uuid.Nil {
 		tokenCtx = context.WithValue(ctx, token.ClaimsContextKey, &token.CustomClaims{
@@ -279,7 +300,7 @@ func (s *authService) ForgotPassword(ctx context.Context, email string) error {
 	}
 
 	if err := s.mailer.SendPasswordReset(context.Background(), user.Email.String(), resetToken.Token); err != nil {
-		log.Printf("Falha ao enfileirar e-mail: %v", err)
+		log.Printf("Falha ao enfileirar e-mail de redefinição de senha: %v", err)
 	}
 
 	return nil
@@ -293,6 +314,7 @@ func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNew
 	}
 
 	if time.Now().UTC().After(resetToken.ExpiresAt) {
+		_ = s.tokenRepo.Delete(ctx, rawToken)
 		return ErrResetTokenExpired
 	}
 
@@ -301,26 +323,27 @@ func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNew
 		return err
 	}
 
-	user, err := s.userRepo.FindByID(ctx, resetToken.UserID)
+	txCtxScoped := ctx
+	if ctx.Value(token.ClaimsContextKey) == nil && resetToken.TenantID != uuid.Nil {
+		txCtxScoped = context.WithValue(ctx, token.ClaimsContextKey, &token.CustomClaims{
+			UserID:   resetToken.UserID,
+			TenantID: resetToken.TenantID,
+		})
+	}
+
+	user, err := s.userRepo.FindByID(txCtxScoped, resetToken.UserID)
 	if err != nil || user == nil {
 		return ErrResetTokenInvalid
 	}
 
 	user.Password = newPassword
 
-	// Contexto enriquecido com as claims do tenant para execução da transação de redefinição
-	txCtxScoped := ctx
-	if ctx.Value(token.ClaimsContextKey) == nil && user.TenantID != uuid.Nil {
-		txCtxScoped = context.WithValue(ctx, token.ClaimsContextKey, &token.CustomClaims{
-			UserID:   user.ID,
-			TenantID: user.TenantID,
-		})
-	}
-
 	resetFn := func(txCtx context.Context) error {
 		if err := s.userRepo.Update(txCtx, user); err != nil {
 			return err
 		}
+		// Invalida o token de reset usado e revoga os refresh tokens existentes do usuário
+		_ = s.tokenRepo.Delete(txCtx, rawToken)
 		return s.tokenRepo.DeleteByUserID(txCtx, resetToken.UserID)
 	}
 
@@ -338,30 +361,25 @@ func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNew
 }
 
 func (s *authService) ChangePassword(ctx context.Context, userID uuid.UUID, dto domain.ChangePasswordDTO) error {
-	// 1. Busca o usuário pelo ID vindo das claims do token JWT
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil || user == nil {
 		return ErrInvalidCredentials
 	}
 
-	// 2. Valida se a senha atual confere usando a comparação do Value Object
 	if err := user.Password.Compare(dto.CurrentPassword); err != nil {
 		return ErrCurrentPasswordIncorrect
 	}
 
-	// 3. Cria o Value Object da nova senha (valida regras de tamanho e gera hash)
 	newPassword, err := pkgDomain.NewPassword(dto.NewPassword)
 	if err != nil {
 		return err
 	}
 
-	// 4. Atualiza o usuário
 	user.Password = newPassword
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return err
 	}
 
-	// 5. Boa prática de segurança: revoga os refresh tokens existentes para deslogar outras sessões
 	_ = s.tokenRepo.DeleteByUserID(ctx, userID)
 
 	return nil

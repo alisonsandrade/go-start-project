@@ -8,6 +8,7 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/platform/database"
 	rolesDomain "github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	usersDomain "github.com/alisonsandrade/go-start-project/internal/users/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -65,13 +66,20 @@ func NewTokenRepository(db *gorm.DB) TokenRepository {
 
 func (r *tokenRepository) Create(ctx context.Context, token *domain.RefreshToken) error {
 	db := getDB(ctx, r.db)
-	return db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Create(token).Error
+	return db.WithContext(ctx).Create(token).Error
 }
 
-func (r *tokenRepository) FindByToken(ctx context.Context, token string) (*domain.RefreshToken, error) {
+func (r *tokenRepository) FindByToken(ctx context.Context, tokenStr string) (*domain.RefreshToken, error) {
 	db := getDB(ctx, r.db)
 	var rt domain.RefreshToken
-	err := db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("token = ?", token).First(&rt).Error
+
+	// Se houver claims de tenant no contexto, aplica o escopo por segurança
+	query := db.WithContext(ctx)
+	if claims, ok := ctx.Value(token.ClaimsContextKey).(*token.CustomClaims); ok && claims != nil && claims.TenantID != uuid.Nil {
+		query = query.Scopes(database.TenantScope(ctx))
+	}
+
+	err := query.Where("token = ?", tokenStr).First(&rt).Error
 	if err != nil {
 		return nil, err
 	}
@@ -80,12 +88,20 @@ func (r *tokenRepository) FindByToken(ctx context.Context, token string) (*domai
 
 func (r *tokenRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
 	db := getDB(ctx, r.db)
-	return db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("user_id = ?", userID).Delete(&domain.RefreshToken{}).Error
+	query := db.WithContext(ctx)
+	if claims, ok := ctx.Value(token.ClaimsContextKey).(*token.CustomClaims); ok && claims != nil && claims.TenantID != uuid.Nil {
+		query = query.Scopes(database.TenantScope(ctx))
+	}
+	return query.Where("user_id = ?", userID).Delete(&domain.RefreshToken{}).Error
 }
 
-func (r *tokenRepository) Delete(ctx context.Context, token string) error {
+func (r *tokenRepository) Delete(ctx context.Context, tokenStr string) error {
 	db := getDB(ctx, r.db)
-	return db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("token = ?", token).Delete(&domain.RefreshToken{}).Error
+	query := db.WithContext(ctx)
+	if claims, ok := ctx.Value(token.ClaimsContextKey).(*token.CustomClaims); ok && claims != nil && claims.TenantID != uuid.Nil {
+		query = query.Scopes(database.TenantScope(ctx))
+	}
+	return query.Where("token = ?", tokenStr).Delete(&domain.RefreshToken{}).Error
 }
 
 type userRepository struct {

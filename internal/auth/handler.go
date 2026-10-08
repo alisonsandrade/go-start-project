@@ -81,6 +81,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := dto.Validate(); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	authResponse, err := h.authService.Login(r.Context(), dto)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) || errors.Is(err, ErrUserInactive) {
@@ -112,8 +117,8 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if dto.RefreshToken == "" {
-		platform.ErrorJSON(w, http.StatusBadRequest, "refresh_token is required")
+	if err := dto.Validate(); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -169,6 +174,11 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := dto.Validate(); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	err := h.authService.ForgotPassword(r.Context(), dto.Email)
 	if err != nil {
 		platform.ErrorJSON(w, http.StatusInternalServerError, "failed to process request")
@@ -196,6 +206,11 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := dto.Validate(); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	err := h.authService.ResetPassword(r.Context(), dto.Token, dto.NewPassword)
 	if err != nil {
 		switch {
@@ -204,7 +219,6 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrResetTokenExpired):
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		default:
-			// Se o err vier do pkgDomain.NewPassword, ele cai aqui com status 400
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		}
 		return
@@ -229,7 +243,6 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 // @Failure      500      {object}  apiresponse.ErrorResponse
 // @Router       /api/auth/change-password [post]
 func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
-	// 1. Extrai as claims injetadas pelo AuthMiddleware
 	claims, ok := r.Context().Value(UserClaimsKey).(*token.CustomClaims)
 	if !ok || claims == nil {
 		platform.ErrorJSON(w, http.StatusUnauthorized, "unauthenticated")
@@ -242,14 +255,17 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Executa a troca
+	if err := dto.Validate(); err != nil {
+		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	err := h.authService.ChangePassword(r.Context(), claims.UserID, dto)
 	if err != nil {
 		if errors.Is(err, ErrCurrentPasswordIncorrect) {
 			platform.ErrorJSON(w, http.StatusUnauthorized, err.Error())
 			return
 		}
-		// Trata erros de validação da nova senha (ex: fraca ou curta)
 		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
