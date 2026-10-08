@@ -73,6 +73,15 @@ func (m *MockTokenRepo) Delete(ctx context.Context, token string) error {
 	return m.Called(ctx, token).Error(0)
 }
 
+type MockUnitOfWork struct {
+	userRepo  auth.UserRepository
+	tokenRepo auth.TokenRepository
+}
+
+func (m *MockUnitOfWork) Do(ctx context.Context, fn func(userRepo auth.UserRepository, tokenRepo auth.TokenRepository) error) error {
+	return fn(m.userRepo, m.tokenRepo)
+}
+
 type MockMailer struct{ mock.Mock }
 
 func (m *MockMailer) SendPasswordReset(ctx context.Context, toEmail, resetToken string) error {
@@ -350,7 +359,8 @@ func TestAuthService_RefreshSession(t *testing.T) {
 	t.Run("rotates refresh token successfully", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
-		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
+		uow := &MockUnitOfWork{userRepo: userRepo, tokenRepo: tokenRepo}
+		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil, uow)
 
 		userID := uuid.New()
 		rawToken := "valid-refresh-token"
@@ -413,7 +423,8 @@ func TestAuthService_RefreshSession(t *testing.T) {
 	t.Run("fails when rotation cannot delete the old token", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
-		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
+		uow := &MockUnitOfWork{userRepo: userRepo, tokenRepo: tokenRepo}
+		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil, uow)
 		userID := uuid.New()
 		rawToken := "rotation-error-token"
 		rt := &domain.RefreshToken{UserID: userID, Token: rawToken, ExpiresAt: time.Now().Add(time.Hour)}
@@ -443,7 +454,6 @@ func TestAuthService_RefreshSession(t *testing.T) {
 
 		tokenRepo.On("FindByToken", mock.Anything, rawToken).Return(rt, nil)
 		userRepo.On("FindByID", mock.Anything, userID).Return(user, nil)
-		tokenRepo.On("Delete", mock.Anything, rawToken).Return(nil)
 
 		resp, err := svc.RefreshSession(context.Background(), rawToken)
 
@@ -521,7 +531,8 @@ func TestAuthService_ResetPassword(t *testing.T) {
 	t.Run("resets password successfully", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
-		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
+		uow := &MockUnitOfWork{userRepo: userRepo, tokenRepo: tokenRepo}
+		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil, uow)
 
 		userID := uuid.New()
 		rawToken := "reset-token"
@@ -581,7 +592,8 @@ func TestAuthService_ResetPassword(t *testing.T) {
 	t.Run("fails when updating password", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
-		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
+		uow := &MockUnitOfWork{userRepo: userRepo, tokenRepo: tokenRepo}
+		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil, uow)
 		userID := uuid.New()
 		rawToken := "update-error-token"
 		email, _ := pkgDomain.NewEmail("update-error@example.com")
@@ -602,7 +614,8 @@ func TestAuthService_ResetPassword(t *testing.T) {
 	t.Run("fails when revoking sessions after updating password", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		tokenRepo := new(MockTokenRepo)
-		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil)
+		uow := &MockUnitOfWork{userRepo: userRepo, tokenRepo: tokenRepo}
+		svc := auth.NewAuthService(userRepo, tokenRepo, testConfig, nil, uow)
 		userID := uuid.New()
 		rawToken := "revoke-error-token"
 		email, _ := pkgDomain.NewEmail("revoke-error@example.com")

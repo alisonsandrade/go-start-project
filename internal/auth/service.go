@@ -30,6 +30,7 @@ type AuthService interface {
 type authService struct {
 	userRepo  UserRepository
 	tokenRepo TokenRepository
+	uow       UnitOfWork
 	cfg       *config.Config
 	mailer    mailer.Mailer
 }
@@ -39,10 +40,16 @@ func NewAuthService(
 	tokenRepo TokenRepository,
 	cfg *config.Config,
 	mailer mailer.Mailer,
+	uow ...UnitOfWork,
 ) AuthService {
+	var unitOfWork UnitOfWork
+	if len(uow) > 0 {
+		unitOfWork = uow[0]
+	}
 	return &authService{
 		userRepo:  userRepo,
 		tokenRepo: tokenRepo,
+		uow:       unitOfWork,
 		cfg:       cfg,
 		mailer:    mailer,
 	}
@@ -124,7 +131,7 @@ func (s *authService) Logout(ctx context.Context, userID uuid.UUID) error {
 	return s.tokenRepo.DeleteByUserID(ctx, userID)
 }
 
-// RefreshSession validates the refresh token, rotates it, and returns a new token pair.
+// RefreshSession validates the refresh token, rotates it, and returns a new token pair inside an atomic Unit of Work.
 func (s *authService) RefreshSession(ctx context.Context, refreshToken string) (*domain.AuthResponseDTO, error) {
 	rt, err := s.tokenRepo.FindByToken(ctx, refreshToken)
 	if err != nil || rt == nil {
@@ -145,12 +152,57 @@ func (s *authService) RefreshSession(ctx context.Context, refreshToken string) (
 		return nil, ErrUserInactive
 	}
 
-	// Rotation invalid old refresh token
-	if err := s.tokenRepo.Delete(ctx, refreshToken); err != nil {
+	email, err := pkgDomain.NewEmail(user.Email.String())
+	if err != nil {
 		return nil, err
 	}
 
-	return s.generateAuthResponse(ctx, user)
+	expHours, _ := strconv.Atoi(s.cfg.JWTExpirationHours)
+	if expHours == 0 {
+		expHours = 24
+	}
+
+	accessToken, err := token.GenerateToken(
+		user.ID, email.String(), user.RoleID, s.cfg.JWTSecret, expHours, user.TenantID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshTokenStr, err := token.GenerateSecureToken()
+	if err != nil {
+		return nil, err
+	}
+
+	newRT := &domain.RefreshToken{
+		UserID:    user.ID,
+		Token:     newRefreshTokenStr,
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
+	}
+
+	// Operações de rotação atômica via Unit of Work
+	rotateOp := func(uRepo UserRepository, tRepo TokenRepository) error {
+		if err := tRepo.Delete(ctx, refreshToken); err != nil {
+			return err
+		}
+		return tRepo.Create(ctx, newRT)
+	}
+
+	if s.uow != nil {
+		if err := s.uow.Do(ctx, rotateOp); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := rotateOp(s.userRepo, s.tokenRepo); err != nil {
+			return nil, err
+		}
+	}
+
+	return &domain.AuthResponseDTO{
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshTokenStr,
+		User:         *user,
+	}, nil
 }
 
 // generateAuthResponse builds the access and refresh tokens and persists the refresh token.
@@ -224,7 +276,7 @@ func (s *authService) ForgotPassword(ctx context.Context, email string) error {
 	return nil
 }
 
-// ResetPassword validates the token, updates the password and revokes all active sessions.
+// ResetPassword validates the token, updates the password and revokes all active sessions in an atomic transaction.
 func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNewPassword string) error {
 	resetToken, err := s.tokenRepo.FindByToken(ctx, rawToken)
 	if err != nil || resetToken == nil {
@@ -247,14 +299,22 @@ func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNew
 
 	user.Password = newPassword
 
-	// save new password the user
-	if err := s.userRepo.Update(ctx, user); err != nil {
-		return err
+	// Atualização do usuário e revogação dos tokens executados de forma atômica
+	resetOp := func(uRepo UserRepository, tRepo TokenRepository) error {
+		if err := uRepo.Update(ctx, user); err != nil {
+			return err
+		}
+		return tRepo.DeleteByUserID(ctx, resetToken.UserID)
 	}
 
-	// Revokes all tokens that user logged
-	if err := s.tokenRepo.DeleteByUserID(ctx, resetToken.UserID); err != nil {
-		return err
+	if s.uow != nil {
+		if err := s.uow.Do(ctx, resetOp); err != nil {
+			return err
+		}
+	} else {
+		if err := resetOp(s.userRepo, s.tokenRepo); err != nil {
+			return err
+		}
 	}
 
 	return nil
