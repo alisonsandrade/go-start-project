@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
-	"github.com/go-playground/validator/v10"
+	validator "github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
