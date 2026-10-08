@@ -89,6 +89,11 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 				}
 			}
 
+			// Se a rota não for autenticada ou não tiver tenant identificado, não persiste auditoria multi-tenant
+			if tenantID == uuid.Nil {
+				return
+			}
+
 			record := &Log{
 				BaseModelTenant: baseDomain.BaseModelTenant{TenantID: tenantID},
 				UserID:          userID,
@@ -98,9 +103,9 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 				UserAgent:       r.UserAgent(),
 			}
 
-			requestContext := r.Context()
+			detachedContext := context.WithoutCancel(r.Context())
 			go func(entry *Log) {
-				ctx, cancel := context.WithTimeout(requestContext, 5*time.Second)
+				ctx, cancel := context.WithTimeout(detachedContext, 5*time.Second)
 				defer cancel()
 
 				if err := repo.Create(ctx, entry); err != nil {

@@ -1,0 +1,4 @@
+claims, ok := tx.Statement.Context.Value(token.ClaimsContextKey).(*token.CustomClaims)
+if !ok || claims == nil || claims.TenantID == uuid.Nil {
+    return errors.New("tenant_id é obrigatório para criar este registro")
+}
