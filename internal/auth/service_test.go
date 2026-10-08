@@ -683,7 +683,7 @@ func TestAuthService_ChangePassword(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrCurrentPasswordIncorrect)
 	})
 
-	t.Run("fails when new password is invalid", func(t *testing.NW... wait, testing.T) {
+	t.Run("fails when new password is invalid", func(t *testing.T) {
 		userRepo := new(MockUserRepo)
 		svc := auth.NewAuthService(userRepo, nil, testConfig, nil)
 		userID := uuid.New()
