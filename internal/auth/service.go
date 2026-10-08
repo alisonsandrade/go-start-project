@@ -30,7 +30,7 @@ type AuthService interface {
 type authService struct {
 	userRepo  UserRepository
 	tokenRepo TokenRepository
-	uow       UnitOfWork
+	tm        TransactionManager
 	cfg       *config.Config
 	mailer    mailer.Mailer
 }
@@ -40,16 +40,16 @@ func NewAuthService(
 	tokenRepo TokenRepository,
 	cfg *config.Config,
 	mailer mailer.Mailer,
-	uow ...UnitOfWork,
+	tm ...TransactionManager,
 ) AuthService {
-	var unitOfWork UnitOfWork
-	if len(uow) > 0 {
-		unitOfWork = uow[0]
+	var transactionManager TransactionManager
+	if len(tm) > 0 {
+		transactionManager = tm[0]
 	}
 	return &authService{
 		userRepo:  userRepo,
 		tokenRepo: tokenRepo,
-		uow:       unitOfWork,
+		tm:        transactionManager,
 		cfg:       cfg,
 		mailer:    mailer,
 	}
@@ -92,10 +92,6 @@ func (s *authService) Register(ctx context.Context, dto domain.RegisterRequest) 
 		IsActive:  true,
 	}
 
-	// if err := user.HashPassword(); err != nil {
-	// 	return nil, err
-	// }
-
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, err
 	}
@@ -131,7 +127,7 @@ func (s *authService) Logout(ctx context.Context, userID uuid.UUID) error {
 	return s.tokenRepo.DeleteByUserID(ctx, userID)
 }
 
-// RefreshSession validates the refresh token, rotates it, and returns a new token pair inside an atomic Unit of Work.
+// RefreshSession validates the refresh token, rotates it, and returns a new token pair inside an atomic transaction.
 func (s *authService) RefreshSession(ctx context.Context, refreshToken string) (*domain.AuthResponseDTO, error) {
 	rt, err := s.tokenRepo.FindByToken(ctx, refreshToken)
 	if err != nil || rt == nil {
@@ -180,20 +176,19 @@ func (s *authService) RefreshSession(ctx context.Context, refreshToken string) (
 		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
 	}
 
-	// Operações de rotação atômica via Unit of Work
-	rotateOp := func(uRepo UserRepository, tRepo TokenRepository) error {
-		if err := tRepo.Delete(ctx, refreshToken); err != nil {
+	rotateFn := func(txCtx context.Context) error {
+		if err := s.tokenRepo.Delete(txCtx, refreshToken); err != nil {
 			return err
 		}
-		return tRepo.Create(ctx, newRT)
+		return s.tokenRepo.Create(txCtx, newRT)
 	}
 
-	if s.uow != nil {
-		if err := s.uow.Do(ctx, rotateOp); err != nil {
+	if s.tm != nil {
+		if err := s.tm.Transaction(ctx, rotateFn); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := rotateOp(s.userRepo, s.tokenRepo); err != nil {
+		if err := rotateFn(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -257,7 +252,6 @@ func (s *authService) ForgotPassword(ctx context.Context, email string) error {
 		return err
 	}
 
-	// Cria a entidade do seu domínio usando a struct que você já tem
 	resetToken := &domain.RefreshToken{
 		BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}},
 		UserID:          user.ID,
@@ -299,20 +293,19 @@ func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNew
 
 	user.Password = newPassword
 
-	// Atualização do usuário e revogação dos tokens executados de forma atômica
-	resetOp := func(uRepo UserRepository, tRepo TokenRepository) error {
-		if err := uRepo.Update(ctx, user); err != nil {
+	resetFn := func(txCtx context.Context) error {
+		if err := s.userRepo.Update(txCtx, user); err != nil {
 			return err
 		}
-		return tRepo.DeleteByUserID(ctx, resetToken.UserID)
+		return s.tokenRepo.DeleteByUserID(txCtx, resetToken.UserID)
 	}
 
-	if s.uow != nil {
-		if err := s.uow.Do(ctx, resetOp); err != nil {
+	if s.tm != nil {
+		if err := s.tm.Transaction(ctx, resetFn); err != nil {
 			return err
 		}
 	} else {
-		if err := resetOp(s.userRepo, s.tokenRepo); err != nil {
+		if err := resetFn(ctx); err != nil {
 			return err
 		}
 	}

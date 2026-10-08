@@ -1,4 +1,4 @@
-// Package auth repository implementa a persistência de dados da aplicação interagindo com o banco./ repository
+// Package auth repository implementa a persistência de dados da aplicação interagindo com o banco.
 package auth
 
 import (
@@ -11,6 +11,12 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+type txContextKey struct{}
+
+type TransactionManager interface {
+	Transaction(ctx context.Context, fn func(txCtx context.Context) error) error
+}
 
 type UserRepository interface {
 	Create(ctx context.Context, user *usersDomain.User) error
@@ -27,8 +33,26 @@ type TokenRepository interface {
 	Delete(ctx context.Context, token string) error
 }
 
-type UnitOfWork interface {
-	Do(ctx context.Context, fn func(userRepo UserRepository, tokenRepo TokenRepository) error) error
+func getDB(ctx context.Context, defaultDB *gorm.DB) *gorm.DB {
+	if tx, ok := ctx.Value(txContextKey{}).(*gorm.DB); ok && tx != nil {
+		return tx
+	}
+	return defaultDB
+}
+
+type gormTransactionManager struct {
+	db *gorm.DB
+}
+
+func NewTransactionManager(db *gorm.DB) TransactionManager {
+	return &gormTransactionManager{db: db}
+}
+
+func (tm *gormTransactionManager) Transaction(ctx context.Context, fn func(txCtx context.Context) error) error {
+	return tm.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txCtx := context.WithValue(ctx, txContextKey{}, tx)
+		return fn(txCtx)
+	})
 }
 
 type tokenRepository struct {
@@ -40,12 +64,14 @@ func NewTokenRepository(db *gorm.DB) TokenRepository {
 }
 
 func (r *tokenRepository) Create(ctx context.Context, token *domain.RefreshToken) error {
-	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Create(token).Error
+	db := getDB(ctx, r.db)
+	return db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Create(token).Error
 }
 
 func (r *tokenRepository) FindByToken(ctx context.Context, token string) (*domain.RefreshToken, error) {
+	db := getDB(ctx, r.db)
 	var rt domain.RefreshToken
-	err := r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("token = ?", token).First(&rt).Error
+	err := db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("token = ?", token).First(&rt).Error
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +79,13 @@ func (r *tokenRepository) FindByToken(ctx context.Context, token string) (*domai
 }
 
 func (r *tokenRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
-	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("user_id = ?", userID).Delete(&domain.RefreshToken{}).Error
+	db := getDB(ctx, r.db)
+	return db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("user_id = ?", userID).Delete(&domain.RefreshToken{}).Error
 }
 
 func (r *tokenRepository) Delete(ctx context.Context, token string) error {
-	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("token = ?", token).Delete(&domain.RefreshToken{}).Error
+	db := getDB(ctx, r.db)
+	return db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("token = ?", token).Delete(&domain.RefreshToken{}).Error
 }
 
 type userRepository struct {
@@ -69,16 +97,19 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 }
 
 func (r *userRepository) Create(ctx context.Context, user *usersDomain.User) error {
-	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Create(user).Error
+	db := getDB(ctx, r.db)
+	return db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Create(user).Error
 }
 
 func (r *userRepository) Update(ctx context.Context, user *usersDomain.User) error {
-	return r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Save(user).Error
+	db := getDB(ctx, r.db)
+	return db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Save(user).Error
 }
 
 func (r *userRepository) FindByEmail(ctx context.Context, email string) (*usersDomain.User, error) {
+	db := getDB(ctx, r.db)
 	var user usersDomain.User
-	err := r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("email = ?", email).First(&user).Error
+	err := db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("email = ?", email).First(&user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +117,9 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*usersD
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*usersDomain.User, error) {
+	db := getDB(ctx, r.db)
 	var user usersDomain.User
-	err := r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("id = ?", id).First(&user).Error
+	err := db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("id = ?", id).First(&user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -95,26 +127,11 @@ func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*usersDoma
 }
 
 func (r *userRepository) GetDefaultRoleID(ctx context.Context) (uuid.UUID, error) {
+	db := getDB(ctx, r.db)
 	var role rolesDomain.RoleEntity
-	err := r.db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("name = ?", "user").First(&role).Error
+	err := db.WithContext(ctx).Scopes(database.TenantScope(ctx)).Where("name = ?", "user").First(&role).Error
 	if err != nil {
 		return uuid.Nil, err
 	}
 	return role.ID, nil
-}
-
-type gormUnitOfWork struct {
-	db *gorm.DB
-}
-
-func NewUnitOfWork(db *gorm.DB) UnitOfWork {
-	return &gormUnitOfWork{db: db}
-}
-
-func (u *gormUnitOfWork) Do(ctx context.Context, fn func(userRepo UserRepository, tokenRepo TokenRepository) error) error {
-	return u.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		txUserRepo := &userRepository{db: tx}
-		txTokenRepo := &tokenRepository{db: tx}
-		return fn(txUserRepo, txTokenRepo)
-	})
 }
