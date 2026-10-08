@@ -171,9 +171,10 @@ func (s *authService) RefreshSession(ctx context.Context, refreshToken string) (
 	}
 
 	newRT := &domain.RefreshToken{
-		UserID:    user.ID,
-		Token:     newRefreshTokenStr,
-		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
+		BaseModelTenant: baseDomain.BaseModelTenant{TenantID: user.TenantID},
+		UserID:          user.ID,
+		Token:           newRefreshTokenStr,
+		ExpiresAt:       time.Now().Add(time.Hour * 24 * 7),
 	}
 
 	rotateFn := func(txCtx context.Context) error {
@@ -225,9 +226,10 @@ func (s *authService) generateAuthResponse(ctx context.Context, user *usersDomai
 	}
 
 	rt := &domain.RefreshToken{
-		UserID:    user.ID,
-		Token:     refreshTokenStr,
-		ExpiresAt: time.Now().Add(time.Hour * 24 * 7), // 7 dias
+		BaseModelTenant: baseDomain.BaseModelTenant{TenantID: user.TenantID},
+		UserID:          user.ID,
+		Token:           refreshTokenStr,
+		ExpiresAt:       time.Now().Add(time.Hour * 24 * 7), // 7 dias
 	}
 	if err := s.tokenRepo.Create(ctx, rt); err != nil {
 		return nil, err
@@ -253,13 +255,26 @@ func (s *authService) ForgotPassword(ctx context.Context, email string) error {
 	}
 
 	resetToken := &domain.RefreshToken{
-		BaseModelTenant: baseDomain.BaseModelTenant{BaseModel: baseDomain.BaseModel{ID: uuid.New()}},
-		UserID:          user.ID,
-		Token:           rawToken,
-		ExpiresAt:       time.Now().UTC().Add(15 * time.Minute),
+		BaseModelTenant: baseDomain.BaseModelTenant{
+			BaseModel: baseDomain.BaseModel{ID: uuid.New()},
+			TenantID:  user.TenantID,
+		},
+		UserID:    user.ID,
+		Token:     rawToken,
+		ExpiresAt: time.Now().UTC().Add(15 * time.Minute),
 	}
 
-	if err := s.tokenRepo.Create(ctx, resetToken); err != nil {
+	// Garante que o contexto da chamada tenha as claims do tenant do usuário encontrado,
+	// evitando erros de TenantScope ou BaseModelTenant.BeforeCreate em rotas públicas.
+	tokenCtx := ctx
+	if ctx.Value(token.ClaimsContextKey) == nil && user.TenantID != uuid.Nil {
+		tokenCtx = context.WithValue(ctx, token.ClaimsContextKey, &token.CustomClaims{
+			UserID:   user.ID,
+			TenantID: user.TenantID,
+		})
+	}
+
+	if err := s.tokenRepo.Create(tokenCtx, resetToken); err != nil {
 		return err
 	}
 
@@ -293,6 +308,15 @@ func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNew
 
 	user.Password = newPassword
 
+	// Contexto enriquecido com as claims do tenant para execução da transação de redefinição
+	txCtxScoped := ctx
+	if ctx.Value(token.ClaimsContextKey) == nil && user.TenantID != uuid.Nil {
+		txCtxScoped = context.WithValue(ctx, token.ClaimsContextKey, &token.CustomClaims{
+			UserID:   user.ID,
+			TenantID: user.TenantID,
+		})
+	}
+
 	resetFn := func(txCtx context.Context) error {
 		if err := s.userRepo.Update(txCtx, user); err != nil {
 			return err
@@ -301,11 +325,11 @@ func (s *authService) ResetPassword(ctx context.Context, rawToken string, rawNew
 	}
 
 	if s.tm != nil {
-		if err := s.tm.Transaction(ctx, resetFn); err != nil {
+		if err := s.tm.Transaction(txCtxScoped, resetFn); err != nil {
 			return err
 		}
 	} else {
-		if err := resetFn(ctx); err != nil {
+		if err := resetFn(txCtxScoped); err != nil {
 			return err
 		}
 	}
