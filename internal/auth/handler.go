@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alisonsandrade/go-start-project/internal/auth/domain"
@@ -13,16 +14,21 @@ import (
 	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
+	validator "github.com/go-playground/validator/v10"
 )
 
 // AuthHandler handles HTTP requests for authentication endpoints.
 type AuthHandler struct {
 	authService AuthService
+	validate    *validator.Validate
 }
 
 // NewAuthHandler creates a new AuthHandler backed by the given AuthService
 func NewAuthHandler(authService AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+	return &AuthHandler{
+		authService: authService,
+		validate:    validator.New(),
+	}
 }
 
 // Register handles public user registration.
@@ -44,7 +50,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := dto.Validate(); err != nil {
+	dto.Name = strings.TrimSpace(dto.Name)
+	dto.Email = strings.ToLower(strings.TrimSpace(dto.Email))
+	dto.Phone = strings.TrimSpace(dto.Phone)
+	dto.AvatarURL = strings.TrimSpace(dto.AvatarURL)
+	dto.JobTitle = strings.TrimSpace(dto.JobTitle)
+	dto.Bio = strings.TrimSpace(dto.Bio)
+
+	if err := h.validate.Struct(dto); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -81,7 +94,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := dto.Validate(); err != nil {
+	dto.Email = strings.ToLower(strings.TrimSpace(dto.Email))
+	dto.Password = strings.TrimSpace(dto.Password)
+
+	if err := h.validate.Struct(dto); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -117,7 +133,9 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := dto.Validate(); err != nil {
+	dto.RefreshToken = strings.TrimSpace(dto.RefreshToken)
+
+	if err := h.validate.Struct(dto); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -174,7 +192,9 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := dto.Validate(); err != nil {
+	dto.Email = strings.ToLower(strings.TrimSpace(dto.Email))
+
+	if err := h.validate.Struct(dto); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -206,7 +226,10 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := dto.Validate(); err != nil {
+	dto.Token = strings.TrimSpace(dto.Token)
+	dto.NewPassword = strings.TrimSpace(dto.NewPassword)
+
+	if err := h.validate.Struct(dto); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -255,7 +278,10 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := dto.Validate(); err != nil {
+	dto.CurrentPassword = strings.TrimSpace(dto.CurrentPassword)
+	dto.NewPassword = strings.TrimSpace(dto.NewPassword)
+
+	if err := h.validate.Struct(dto); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
