@@ -115,15 +115,17 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 			platform.ErrorJSON(w, http.StatusForbidden, "Acesso restrito para administradores")
 		case errors.Is(err, ErrEmailAlreadyExists):
 			platform.ErrorJSON(w, http.StatusConflict, err.Error()) // 409 Conflict é o padrão REST para duplicidade
-		case errors.Is(err, domain.ErrUserNameTooShort):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
-		case errors.Is(err, domain.ErrUserNameTooLong):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
-		case errors.Is(err, domain.ErrUserRoleRequired):
-			platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
-		case errors.Is(err, domain.ErrUserPhoneTooLong):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
-		case errors.Is(err, domain.ErrUserAvatarInvalid):
+			/*
+				case errors.Is(err, domain.ErrUserNameTooShort):
+					platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
+				case errors.Is(err, domain.ErrUserNameTooLong):
+					platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
+				case errors.Is(err, domain.ErrUserRoleRequired):
+					platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
+				case errors.Is(err, domain.ErrUserPhoneTooLong):
+					platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
+				case errors.Is(err, domain.ErrUserAvatarInvalid):
+			*/
 			platform.ErrorJSON(w, http.StatusBadRequest, "O link da foto de perfil não é uma URL válida.")
 		case errors.Is(err, ErrInvalidRole):
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
@@ -167,16 +169,19 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
 		case errors.Is(err, ErrForbidden):
 			platform.ErrorJSON(w, http.StatusForbidden, "Acesso restrito para administradores")
-		case errors.Is(err, domain.ErrUserNameTooShort):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
-		case errors.Is(err, domain.ErrUserNameTooLong):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
-		case errors.Is(err, domain.ErrUserRoleRequired):
-			platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
-		case errors.Is(err, domain.ErrUserPhoneTooLong):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
-		case errors.Is(err, domain.ErrUserAvatarInvalid):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O link da foto de perfil não é uma URL válida.")
+
+		/*
+			case errors.Is(err, domain.ErrUserNameTooShort):
+				platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
+			case errors.Is(err, domain.ErrUserNameTooLong):
+				platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
+			case errors.Is(err, domain.ErrUserRoleRequired):
+				platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
+			case errors.Is(err, domain.ErrUserPhoneTooLong):
+				platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
+			case errors.Is(err, domain.ErrUserAvatarInvalid):
+				platform.ErrorJSON(w, http.StatusBadRequest, "O link da foto de perfil não é uma URL válida.")
+		*/
 		case errors.Is(err, ErrInvalidRole):
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		case errors.Is(err, pkgDomain.ErrInvalidEmail):
@@ -292,16 +297,19 @@ func (h *UserHandler) UpdateUserAsAdmin(w http.ResponseWriter, r *http.Request) 
 			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
 		case errors.Is(err, ErrForbidden):
 			platform.ErrorJSON(w, http.StatusForbidden, "Acesso restrito para administradores")
-		case errors.Is(err, domain.ErrUserNameTooShort):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
-		case errors.Is(err, domain.ErrUserNameTooLong):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
-		case errors.Is(err, domain.ErrUserRoleRequired):
-			platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
-		case errors.Is(err, domain.ErrUserPhoneTooLong):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
-		case errors.Is(err, domain.ErrUserAvatarInvalid):
-			platform.ErrorJSON(w, http.StatusBadRequest, "O link da foto de perfil não é uma URL válida.")
+
+		/*
+			case errors.Is(err, domain.ErrUserNameTooShort):
+				platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
+			case errors.Is(err, domain.ErrUserNameTooLong):
+				platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
+			case errors.Is(err, domain.ErrUserRoleRequired):
+				platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
+			case errors.Is(err, domain.ErrUserPhoneTooLong):
+				platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
+			case errors.Is(err, domain.ErrUserAvatarInvalid):
+				platform.ErrorJSON(w, http.StatusBadRequest, "O link da foto de perfil não é uma URL válida.")
+		*/
 		case errors.Is(err, ErrInvalidRole):
 			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
 		case errors.Is(err, pkgDomain.ErrInvalidEmail):
