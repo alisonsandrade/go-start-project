@@ -1,0 +1,291 @@
+### ====================================================================
+### Configurações de Variáveis
+### ====================================================================
+@baseUrl = http://localhost:8000
+@contentType = application/json
+
+# Variáveis globais para armazenar tokens e IDs durante os testes
+# (Esses valores podem ser sobrescritos manualmente ou atualizados)
+@authToken = {{login.response.body.access_token}}
+@refreshToken = {{login.response.body.refresh_token}}
+@tenantId = 00000000-0000-0000-0000-000000000000
+@roleId = 00000000-0000-0000-0000-000000000000
+@userId = 00000000-0000-0000-0000-000000000000
+
+### ====================================================================
+### 1. HEALTH CHECK & STATUS
+### ====================================================================
+
+### Verificar status da aplicação e conexão com o banco
+GET {{baseUrl}}/health
+Content-Type: {{contentType}}
+
+### ====================================================================
+### 2. AUTENTICAÇÃO (/auth)
+### ====================================================================
+
+### Registrar novo usuário comum
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "João da Silva",
+  "email": "joao.silva@exemplo.com",
+  "password": "senhaSegura123!",
+  "phone": "11999998888",
+  "avatar_url": "https://exemplo.com/avatar.jpg",
+  "job_title": "Desenvolvedor Backend",
+  "bio": "Desenvolvedor Go e APIs REST"
+}
+
+### Registrar usuário com perfil específico (Admin)
+POST {{baseUrl}}/auth/register-admin
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "Maria Gestora",
+  "email": "maria.gestora@exemplo.com",
+  "password": "senhaSegura123!",
+  "phone": "11988887777",
+  "role": "{{roleId}}"
+}
+
+### Efetuar login e capturar tokens
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "joao.silva@exemplo.com",
+  "password": "senhaSegura123!"
+}
+
+### Renovar Access Token (Refresh Token)
+# @name refreshTokenRequest
+POST {{baseUrl}}/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refresh_token": "{{refreshToken}}"
+}
+
+### Solicitar recuperação de senha (envio de e-mail)
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "joao.silva@exemplo.com"
+}
+
+### Redefinir senha com o token recebido
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "token": "token-recebido-por-email",
+  "new_password": "novaSenhaSuperSegura123!"
+}
+
+### Alterar senha do usuário autenticado
+POST {{baseUrl}}/auth/change-password
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "current_password": "senhaSegura123!",
+  "new_password": "novaSenhaSegura456!"
+}
+
+### Obter perfil do usuário logado
+GET {{baseUrl}}/auth/me
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Logout (Revogar Refresh Token)
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "refresh_token": "{{refreshToken}}"
+}
+
+### ====================================================================
+### 3. USUÁRIOS (/users)
+### ====================================================================
+
+### Listar usuários com paginação
+GET {{baseUrl}}/users?page=1&limit=10
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Obter usuário por ID
+GET {{baseUrl}}/users/{{userId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Criar usuário (Admin)
+POST {{baseUrl}}/users
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "Novo Usuário",
+  "email": "novo.usuario@exemplo.com",
+  "password": "senhaSegura123!",
+  "phone": "11977776666",
+  "role_id": "{{roleId}}",
+  "job_title": "Analista de Suporte",
+  "bio": "Bio do usuário"
+}
+
+### Atualizar próprio perfil de usuário
+PUT {{baseUrl}}/users
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "João Silva Editado",
+  "phone": "11911112222",
+  "avatar_url": "https://exemplo.com/novo-avatar.jpg",
+  "job_title": "Senior Go Developer",
+  "bio": "Bio atualizada com novas experiências"
+}
+
+### Atualização administrativa de usuário (Admin)
+PATCH {{baseUrl}}/users/{{userId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "João Admin Atualizado",
+  "email": "joao.atualizado@exemplo.com",
+  "role_id": "{{roleId}}",
+  "is_active": true
+}
+
+### Trocar usuário de Tenant
+POST {{baseUrl}}/users/{{userId}}/change-tenant
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "tenant_id": "{{tenantId}}",
+  "role_id": "{{roleId}}"
+}
+
+### Deletar usuário por ID
+DELETE {{baseUrl}}/users/{{userId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### ====================================================================
+### 4. PERFIS E PERMISSÕES (/roles & /permissions)
+### ====================================================================
+
+### Listar todas as permissões cadastradas no sistema
+GET {{baseUrl}}/permissions
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Listar perfis/cargos paginados
+GET {{baseUrl}}/roles?page=1&limit=10
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Obter perfil por ID
+GET {{baseUrl}}/roles/{{roleId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Criar novo perfil
+POST {{baseUrl}}/roles
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "Financeiro",
+  "description": "Acesso às rotas e recursos financeiros"
+}
+
+### Atualizar informações do perfil
+PUT {{baseUrl}}/roles/{{roleId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "Financeiro Geral",
+  "description": "Acesso atualizado às rotas financeiras"
+}
+
+### Substituir permissões associadas a um perfil
+PUT {{baseUrl}}/roles/{{roleId}}/permissions
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "permission_ids": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ]
+}
+
+### Excluir perfil por ID
+DELETE {{baseUrl}}/roles/{{roleId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### ====================================================================
+### 5. TENANTS / ORGANIZAÇÕES (/tenants)
+### ====================================================================
+
+### Listar tenants paginados
+GET {{baseUrl}}/tenants?page=1&limit=10
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Obter tenant por ID
+GET {{baseUrl}}/tenants/{{tenantId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Criar novo tenant
+POST {{baseUrl}}/tenants
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "Empresa XPTO Ltda",
+  "document": "12345678000199",
+  "settings": {
+    "theme": "dark",
+    "features": {
+      "audit_logs": true,
+      "notifications": true
+    }
+  }
+}
+
+### Atualizar informações do tenant
+PUT {{baseUrl}}/tenants/{{tenantId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "Empresa XPTO Brasil Ltda",
+  "document": "12345678000199",
+  "settings": {
+    "theme": "light",
+    "features": {
+      "audit_logs": true,
+      "notifications": false
+    }
+  }
+}
+
+### Deletar tenant por ID
+DELETE {{baseUrl}}/tenants/{{tenantId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
