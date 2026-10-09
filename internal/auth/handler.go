@@ -41,12 +41,13 @@ func NewAuthHandler(authService AuthService) *AuthHandler {
 // @Success      201      {object}  domain.AuthResponseDTO
 // @Failure      400      {object}  apiresponse.ErrorResponse
 // @Failure      409      {object}  apiresponse.ErrorResponse
+// @Failure      422      {object}  apiresponse.ErrorResponse
 // @Failure      500      {object}  apiresponse.ErrorResponse
 // @Router       /api/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var dto domain.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
 		return
 	}
 
@@ -58,17 +59,17 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	dto.Bio = strings.TrimSpace(dto.Bio)
 
 	if err := h.validate.Struct(dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
 	authResponse, err := h.authService.Register(r.Context(), dto)
 	if err != nil {
 		if errors.Is(err, ErrEmailAlreadyExists) {
-			platform.ErrorJSON(w, http.StatusConflict, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, "EMAIL_ALREADY_EXISTS", err.Error())
 			return
 		}
-		platform.ErrorJSON(w, http.StatusInternalServerError, "failed to process registration")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Falha ao processar o cadastro")
 		return
 	}
 
@@ -85,12 +86,13 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Success      200      {object}  domain.AuthResponseDTO
 // @Failure      400      {object}  apiresponse.ErrorResponse
 // @Failure      401      {object}  apiresponse.ErrorResponse
+// @Failure      422      {object}  apiresponse.ErrorResponse
 // @Failure      500      {object}  apiresponse.ErrorResponse
 // @Router       /api/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var dto domain.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
 		return
 	}
 
@@ -98,17 +100,17 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	dto.Password = strings.TrimSpace(dto.Password)
 
 	if err := h.validate.Struct(dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
 	authResponse, err := h.authService.Login(r.Context(), dto)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) || errors.Is(err, ErrUserInactive) {
-			platform.ErrorJSON(w, http.StatusUnauthorized, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", err.Error())
 			return
 		}
-		platform.ErrorJSON(w, http.StatusInternalServerError, "failed to process login")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Falha ao processar o login")
 		return
 	}
 
@@ -125,24 +127,25 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 // @Success      200      {object}  domain.AuthResponseDTO
 // @Failure      400      {object}  apiresponse.ErrorResponse
 // @Failure      401      {object}  apiresponse.ErrorResponse
+// @Failure      422      {object}  apiresponse.ErrorResponse
 // @Router       /api/auth/refresh [post]
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	var dto domain.RefreshTokenDTO
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
 		return
 	}
 
 	dto.RefreshToken = strings.TrimSpace(dto.RefreshToken)
 
 	if err := h.validate.Struct(dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
 	authResponse, err := h.authService.RefreshSession(r.Context(), dto.RefreshToken)
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusUnauthorized, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", err.Error())
 		return
 	}
 
@@ -162,12 +165,12 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(UserClaimsKey).(*token.CustomClaims)
 	if !ok || claims == nil {
-		platform.ErrorJSON(w, http.StatusUnauthorized, "unauthenticated")
+		platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "Não autenticado")
 		return
 	}
 
 	if err := h.authService.Logout(r.Context(), claims.UserID); err != nil {
-		platform.ErrorJSON(w, http.StatusInternalServerError, "failed to logout")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Falha ao efetuar logout")
 		return
 	}
 
@@ -184,24 +187,25 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Param        payload  body      domain.ForgotPasswordDTO  true  "Email"
 // @Success      200      {object}  apiresponse.MessageResponse
 // @Failure      400      {object}  apiresponse.ErrorResponse
+// @Failure      422      {object}  apiresponse.ErrorResponse
 // @Router       /api/auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var dto domain.ForgotPasswordDTO
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
 		return
 	}
 
 	dto.Email = strings.ToLower(strings.TrimSpace(dto.Email))
 
 	if err := h.validate.Struct(dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
 	err := h.authService.ForgotPassword(r.Context(), dto.Email)
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusInternalServerError, "failed to process request")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Falha ao processar solicitação")
 		return
 	}
 
@@ -218,11 +222,12 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 // @Param        payload  body      domain.ResetPasswordDTO  true  "Token and new password"
 // @Success      200      {object}  apiresponse.MessageResponse
 // @Failure      400      {object}  apiresponse.ErrorResponse
+// @Failure      422      {object}  apiresponse.ErrorResponse
 // @Router       /api/auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var dto domain.ResetPasswordDTO
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
 		return
 	}
 
@@ -230,7 +235,7 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	dto.NewPassword = strings.TrimSpace(dto.NewPassword)
 
 	if err := h.validate.Struct(dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
@@ -238,11 +243,11 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrResetTokenInvalid):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_RESET_TOKEN", err.Error())
 		case errors.Is(err, ErrResetTokenExpired):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "EXPIRED_RESET_TOKEN", err.Error())
 		default:
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		}
 		return
 	}
@@ -263,18 +268,19 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 // @Success      200      {object}  apiresponse.MessageResponse
 // @Failure      400      {object}  apiresponse.ErrorResponse
 // @Failure      401      {object}  apiresponse.ErrorResponse
+// @Failure      422      {object}  apiresponse.ErrorResponse
 // @Failure      500      {object}  apiresponse.ErrorResponse
 // @Router       /api/auth/change-password [post]
 func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(UserClaimsKey).(*token.CustomClaims)
 	if !ok || claims == nil {
-		platform.ErrorJSON(w, http.StatusUnauthorized, "unauthenticated")
+		platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "Não autenticado")
 		return
 	}
 
 	var dto domain.ChangePasswordDTO
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
 		return
 	}
 
@@ -282,17 +288,17 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	dto.NewPassword = strings.TrimSpace(dto.NewPassword)
 
 	if err := h.validate.Struct(dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
 	err := h.authService.ChangePassword(r.Context(), claims.UserID, dto)
 	if err != nil {
 		if errors.Is(err, ErrCurrentPasswordIncorrect) {
-			platform.ErrorJSON(w, http.StatusUnauthorized, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "INCORRECT_PASSWORD", err.Error())
 			return
 		}
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
 

@@ -47,10 +47,10 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.userService.GetUser(r.Context(), claims.UserID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
 			return
 		}
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.userService.ListUsers(r.Context(), params)
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusInternalServerError, "erro ao listar usuários")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "erro ao listar usuários")
 		return
 	}
 
@@ -93,18 +93,19 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 // @Success      201  {object}  domain.UserResponse
 // @Failure      400  {object}  apiresponse.ErrorResponse
 // @Failure      401  {object}  apiresponse.ErrorResponse
+// @Failure      409  {object}  apiresponse.ErrorResponse
 // @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 	if !ok || claims == nil {
-		platform.ErrorJSON(w, http.StatusUnauthorized, "Não autorizado")
+		platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "Não autorizado")
 		return
 	}
 
 	var dto domain.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", err.Error())
 		return
 	}
 
@@ -112,27 +113,15 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrForbidden):
-			platform.ErrorJSON(w, http.StatusForbidden, "Acesso restrito para administradores")
+			platform.ErrorWithCodeJSON(w, http.StatusForbidden, "FORBIDDEN", "Acesso restrito para administradores")
 		case errors.Is(err, ErrEmailAlreadyExists):
-			platform.ErrorJSON(w, http.StatusConflict, err.Error()) // 409 Conflict é o padrão REST para duplicidade
-			/*
-				case errors.Is(err, domain.ErrUserNameTooShort):
-					platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
-				case errors.Is(err, domain.ErrUserNameTooLong):
-					platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
-				case errors.Is(err, domain.ErrUserRoleRequired):
-					platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
-				case errors.Is(err, domain.ErrUserPhoneTooLong):
-					platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
-				case errors.Is(err, domain.ErrUserAvatarInvalid):
-			*/
-			platform.ErrorJSON(w, http.StatusBadRequest, "O link da foto de perfil não é uma URL válida.")
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, "EMAIL_ALREADY_EXISTS", err.Error())
 		case errors.Is(err, ErrInvalidRole):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_ROLE", err.Error())
 		case errors.Is(err, pkgDomain.ErrInvalidEmail):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_EMAIL", err.Error())
 		default:
-			platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		}
 		return
 	}
@@ -151,6 +140,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  domain.User
 // @Failure      400  {object}  apiresponse.ErrorResponse
 // @Failure      401  {object}  apiresponse.ErrorResponse
+// @Failure      404  {object}  apiresponse.ErrorResponse
 // @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users/me [put]
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +148,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	var dto domain.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "Corpo da requisição inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
 		return
 	}
 
@@ -166,28 +156,15 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrUserNotFound):
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
 		case errors.Is(err, ErrForbidden):
-			platform.ErrorJSON(w, http.StatusForbidden, "Acesso restrito para administradores")
-
-		/*
-			case errors.Is(err, domain.ErrUserNameTooShort):
-				platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
-			case errors.Is(err, domain.ErrUserNameTooLong):
-				platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
-			case errors.Is(err, domain.ErrUserRoleRequired):
-				platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
-			case errors.Is(err, domain.ErrUserPhoneTooLong):
-				platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
-			case errors.Is(err, domain.ErrUserAvatarInvalid):
-				platform.ErrorJSON(w, http.StatusBadRequest, "O link da foto de perfil não é uma URL válida.")
-		*/
+			platform.ErrorWithCodeJSON(w, http.StatusForbidden, "FORBIDDEN", "Acesso restrito para administradores")
 		case errors.Is(err, ErrInvalidRole):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_ROLE", err.Error())
 		case errors.Is(err, pkgDomain.ErrInvalidEmail):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_EMAIL", err.Error())
 		default:
-			platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		}
 		return
 	}
@@ -212,10 +189,10 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	err := h.userService.DeleteUser(r.Context(), claims.UserID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
 			return
 		}
-		platform.ErrorJSON(w, http.StatusInternalServerError, "erro interno ao deletar usuário")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "erro interno ao deletar usuário")
 		return
 	}
 
@@ -236,6 +213,7 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        id path string true "User ID"
 // @Success      200  {object}  domain.User
+// @Failure      400  {object}  apiresponse.ErrorResponse
 // @Failure      401  {object}  apiresponse.ErrorResponse
 // @Failure      404  {object}  apiresponse.ErrorResponse
 // @Failure      500  {object}  apiresponse.ErrorResponse
@@ -245,17 +223,17 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 
 	idUUID, err := uuid.Parse(userID)
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", err.Error())
 		return
 	}
 
 	user, err := h.userService.GetUser(r.Context(), idUUID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
 			return
 		}
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
@@ -274,19 +252,20 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  domain.User
 // @Failure      400  {object}  apiresponse.ErrorResponse
 // @Failure      401  {object}  apiresponse.ErrorResponse
+// @Failure      404  {object}  apiresponse.ErrorResponse
 // @Failure      500  {object}  apiresponse.ErrorResponse
 // @Router       /api/users/{id} [put]
 func (h *UserHandler) UpdateUserAsAdmin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	userUUID, err := uuid.Parse(id)
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", err.Error())
 		return
 	}
 
 	var dto domain.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "Corpo da requisição inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
 		return
 	}
 
@@ -294,28 +273,15 @@ func (h *UserHandler) UpdateUserAsAdmin(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrUserNotFound):
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
 		case errors.Is(err, ErrForbidden):
-			platform.ErrorJSON(w, http.StatusForbidden, "Acesso restrito para administradores")
-
-		/*
-			case errors.Is(err, domain.ErrUserNameTooShort):
-				platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário deve conter pelo menos 2 letras.")
-			case errors.Is(err, domain.ErrUserNameTooLong):
-				platform.ErrorJSON(w, http.StatusBadRequest, "O nome do usuário é muito longo (máximo de 100 caracteres).")
-			case errors.Is(err, domain.ErrUserRoleRequired):
-				platform.ErrorJSON(w, http.StatusBadRequest, "É obrigatório selecionar um perfil (Role) para o usuário.")
-			case errors.Is(err, domain.ErrUserPhoneTooLong):
-				platform.ErrorJSON(w, http.StatusBadRequest, "O número de telefone inserido é inválido (muito longo).")
-			case errors.Is(err, domain.ErrUserAvatarInvalid):
-				platform.ErrorJSON(w, http.StatusBadRequest, "O link da foto de perfil não é uma URL válida.")
-		*/
+			platform.ErrorWithCodeJSON(w, http.StatusForbidden, "FORBIDDEN", "Acesso restrito para administradores")
 		case errors.Is(err, ErrInvalidRole):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_ROLE", err.Error())
 		case errors.Is(err, pkgDomain.ErrInvalidEmail):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_EMAIL", err.Error())
 		default:
-			platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		}
 		return
 	}
@@ -331,6 +297,7 @@ func (h *UserHandler) UpdateUserAsAdmin(w http.ResponseWriter, r *http.Request) 
 // @Produce      json
 // @Param        id path string true "User ID"
 // @Success      200  {object}  apiresponse.MessageResponse
+// @Failure      400  {object}  apiresponse.ErrorResponse
 // @Failure      401  {object}  apiresponse.ErrorResponse
 // @Failure      404  {object}  apiresponse.ErrorResponse
 // @Failure      500  {object}  apiresponse.ErrorResponse
@@ -339,17 +306,17 @@ func (h *UserHandler) SoftDeleteUserAsAdmin(w http.ResponseWriter, r *http.Reque
 	id := chi.URLParam(r, "id")
 	userUUID, er := uuid.Parse(id)
 	if er != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, er.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", er.Error())
 		return
 	}
 
 	err := h.userService.SoftDeleteUserAsAdmin(r.Context(), userUUID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
 			return
 		}
-		platform.ErrorJSON(w, http.StatusInternalServerError, "erro interno ao deletar usuário")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "erro interno ao deletar usuário")
 		return
 	}
 
@@ -376,24 +343,24 @@ func (h *UserHandler) SoftDeleteUserAsAdmin(w http.ResponseWriter, r *http.Reque
 func (h *UserHandler) ChangeUserTenant(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid user id")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", "invalid user id")
 		return
 	}
 
 	var dto domain.ChangeUserTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "invalid request body")
 		return
 	}
 
 	if err := h.userService.ChangeUserTenant(r.Context(), id, dto); err != nil {
 		switch {
 		case errors.Is(err, ErrUserNotFound), errors.Is(err, gorm.ErrRecordNotFound):
-			platform.ErrorJSON(w, http.StatusNotFound, "usuário, tenant ou role não encontrado")
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "NOT_FOUND", "usuário, tenant ou role não encontrado")
 		case strings.Contains(err.Error(), "obrigatórios"), strings.Contains(err.Error(), "já pertence"):
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		default:
-			platform.ErrorJSON(w, http.StatusInternalServerError, "failed to change user tenant")
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to change user tenant")
 		}
 		return
 	}
