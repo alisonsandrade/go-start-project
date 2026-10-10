@@ -18,16 +18,21 @@ import (
 	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type UserHandler struct {
 	userService UserService
+	validate    *validator.Validate
 }
 
 func NewUserHandler(userService UserService) *UserHandler {
-	return &UserHandler{userService: userService}
+	return &UserHandler{
+		userService: userService,
+		validate:    validator.New(),
+	}
 }
 
 // GetUser obtém os detalhes do perfil do usuário autenticado.
@@ -149,6 +154,11 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var dto domain.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
 		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
+		return
+	}
+
+	if err := h.validate.Struct(dto); err != nil {
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
