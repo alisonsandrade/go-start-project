@@ -114,6 +114,11 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.validate.Struct(dto); err != nil {
+		platform.ValidationErrorJSON(w, err)
+		return
+	}
+
 	user, err := h.userService.CreateUserAsAdmin(r.Context(), dto)
 	if err != nil {
 		switch {
@@ -279,6 +284,11 @@ func (h *UserHandler) UpdateUserAsAdmin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if err := h.validate.Struct(dto); err != nil {
+		platform.ValidationErrorJSON(w, err)
+		return
+	}
+
 	user, err := h.userService.UpdateUser(r.Context(), userUUID, dto)
 	if err != nil {
 		switch {
@@ -360,6 +370,11 @@ func (h *UserHandler) ChangeUserTenant(w http.ResponseWriter, r *http.Request) {
 	var dto domain.ChangeUserTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
 		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "invalid request body")
+		return
+	}
+
+	if err := h.validate.Struct(dto); err != nil {
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 

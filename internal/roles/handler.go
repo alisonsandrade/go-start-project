@@ -14,16 +14,19 @@ import (
 	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
 	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
 type RoleHandler struct {
 	roleService RoleService
+	validate    *validator.Validate
 }
 
 func NewRoleHandler(roleService RoleService) *RoleHandler {
 	return &RoleHandler{
 		roleService: roleService,
+		validate:    validator.New(),
 	}
 }
 
@@ -106,6 +109,11 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.validate.Struct(req); err != nil {
+		platform.ValidationErrorJSON(w, err)
+		return
+	}
+
 	role := &domain.RoleEntity{
 		Name:        req.Name,
 		Description: req.Description,
@@ -151,6 +159,11 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
@@ -250,6 +263,11 @@ func (h *RoleHandler) ReplacePermissions(w http.ResponseWriter, r *http.Request)
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 

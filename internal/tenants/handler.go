@@ -15,15 +15,20 @@ import (
 	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
 type Handler struct {
-	service Service
+	service  Service
+	validate *validator.Validate
 }
 
 func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+	return &Handler{
+		service:  service,
+		validate: validator.New(),
+	}
 }
 
 // Create registers a new company or institution tenant.
@@ -43,6 +48,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var request domain.CreateTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.validate.Struct(request); err != nil {
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
@@ -170,6 +180,11 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	var request domain.UpdateTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.validate.Struct(request); err != nil {
+		platform.ValidationErrorJSON(w, err)
 		return
 	}
 
