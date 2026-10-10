@@ -3,7 +3,9 @@ package audit
 
 import (
 	baseDomain "github.com/alisonsandrade/go-start-project/internal/domain"
+	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Log representa o registro de auditoria persistido no banco de dados
@@ -18,6 +20,23 @@ type Log struct {
 
 func (Log) TableName() string {
 	return "audit_logs"
+}
+
+// BeforeCreate sobrescreve o hook BeforeCreate do BaseModelTenant.
+// Isso evita a falha quando o TenantID já foi populado diretamente na struct
+// ou quando o log de auditoria é persistido de forma assíncrona.
+func (l *Log) BeforeCreate(tx *gorm.DB) error {
+	if l.ID == uuid.Nil {
+		l.ID = uuid.New()
+	}
+
+	if l.TenantID == uuid.Nil && tx != nil && tx.Statement != nil && tx.Statement.Context != nil {
+		if claims, ok := tx.Statement.Context.Value(token.ClaimsContextKey).(*token.CustomClaims); ok && claims != nil {
+			l.TenantID = claims.TenantID
+		}
+	}
+
+	return nil
 }
 
 // CreateLogRequest representa a estrutura para criação de um registro de auditoria com validações.

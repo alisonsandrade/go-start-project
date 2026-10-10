@@ -2,7 +2,9 @@
 package audit
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -18,6 +20,7 @@ import (
 type statusResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
+	body       bytes.Buffer
 }
 
 func (rw *statusResponseWriter) WriteHeader(code int) {
@@ -29,6 +32,7 @@ func (rw *statusResponseWriter) Write(b []byte) (int, error) {
 	if rw.statusCode == 0 {
 		rw.statusCode = http.StatusOK
 	}
+	rw.body.Write(b)
 	return rw.ResponseWriter.Write(b)
 }
 
@@ -65,9 +69,10 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 				ip = r.RemoteAddr
 			}
 
-			// 1. Tenta extrair do context
 			var userID *uuid.UUID
 			tenantID := uuid.Nil
+
+			// 1. Tenta extrair do context da requisição
 			if claims, ok := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims); ok && claims != nil {
 				tenantID = claims.TenantID
 				if claims.UserID != uuid.Nil {
@@ -76,7 +81,7 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 				}
 			}
 
-			// 2. Se o context for nulo devido à cópia rasa do Go, extrai direto do Bearer Token
+			// 2. Se não encontrou no context, tenta extrair do cabeçalho Bearer Token
 			if userID == nil {
 				authHeader := r.Header.Get("Authorization")
 				if strings.HasPrefix(authHeader, "Bearer ") {
@@ -89,7 +94,35 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 				}
 			}
 
-			// Se a rota não for autenticada ou não tiver tenant identificado, não persiste auditoria multi-tenant
+			// 3. Caso seja rota de login ou refresh bem-sucedida, o token e o usuário estão no response body
+			if (tenantID == uuid.Nil || userID == nil) && (strings.HasSuffix(path, "/login") || strings.HasSuffix(path, "/refresh")) {
+				var authResp struct {
+					AccessToken string `json:"access_token"`
+					User        struct {
+						ID       uuid.UUID `json:"id"`
+						TenantID uuid.UUID `json:"tenant_id"`
+					} `json:"user"`
+				}
+
+				if err := json.Unmarshal(rw.body.Bytes(), &authResp); err == nil {
+					if authResp.AccessToken != "" {
+						if claims, err := token.ValidateToken(authResp.AccessToken, jwtSecret); err == nil && claims != nil {
+							tenantID = claims.TenantID
+							uid := claims.UserID
+							userID = &uid
+						}
+					}
+					if tenantID == uuid.Nil && authResp.User.TenantID != uuid.Nil {
+						tenantID = authResp.User.TenantID
+					}
+					if userID == nil && authResp.User.ID != uuid.Nil {
+						uid := authResp.User.ID
+						userID = &uid
+					}
+				}
+			}
+
+			// Se a rota não pertencer a nenhum tenant identificado, não persiste auditoria multi-tenant
 			if tenantID == uuid.Nil {
 				return
 			}
@@ -103,15 +136,26 @@ func Middleware(repo AuditRepository, jwtSecret string) func(http.Handler) http.
 				UserAgent:       r.UserAgent(),
 			}
 
+			// Prepara contexto desacoplado com as claims para satisfazer o TenantScope
+			claimsForAudit := &token.CustomClaims{
+				TenantID: tenantID,
+			}
+			if userID != nil {
+				claimsForAudit.UserID = *userID
+			}
+
 			detachedContext := context.WithoutCancel(r.Context())
-			go func(entry *Log) {
-				ctx, cancel := context.WithTimeout(detachedContext, 5*time.Second)
+			auditCtx := context.WithValue(detachedContext, token.ClaimsContextKey, claimsForAudit)
+			auditCtx = context.WithValue(auditCtx, auth.UserClaimsKey, claimsForAudit)
+
+			go func(ctx context.Context, entry *Log) {
+				timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 				defer cancel()
 
-				if err := repo.Create(ctx, entry); err != nil {
+				if err := repo.Create(timeoutCtx, entry); err != nil {
 					log.Printf("[AUDIT ERROR] Falha ao persistir auditoria: %v", err)
 				}
-			}(record)
+			}(auditCtx, record)
 		})
 	}
 }
