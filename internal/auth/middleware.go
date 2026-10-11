@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/alisonsandrade/go-start-project/internal/config"
+	"github.com/alisonsandrade/go-start-project/internal/platform"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/google/uuid"
 )
@@ -25,14 +26,14 @@ func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				http.Error(w, `{"error": "cabeçalho de autorização ausente"}`, http.StatusUnauthorized)
+				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "cabeçalho de autorização ausente")
 				return
 			}
 
 			// Extração do token
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || parts[0] != "Bearer" {
-				http.Error(w, `{"error": "formato de token inválido. Use Bearer <token>"}`, http.StatusUnauthorized)
+				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "INVALID_TOKEN_FORMAT", "formato de token inválido. Use Bearer <token>")
 				return
 			}
 
@@ -41,7 +42,7 @@ func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 			// Validação do token
 			claims, err := token.ValidateToken(tokenString, cfg.JWTSecret)
 			if err != nil {
-				http.Error(w, `{"error": "token inválido ou expirado"}`, http.StatusUnauthorized)
+				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "INVALID_TOKEN", "token inválido ou expirado")
 				return
 			}
 
@@ -58,7 +59,7 @@ func TenantContextMiddleware(next http.Handler) http.Handler {
 		if rawTenantID := r.Header.Get("X-Tenant-ID"); rawTenantID != "" {
 			parsedTenantID, err := uuid.Parse(rawTenantID)
 			if err != nil || parsedTenantID == uuid.Nil {
-				http.Error(w, `{"error": "tenant_id inválido"}`, http.StatusBadRequest)
+				platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_TENANT_ID", "tenant_id inválido")
 				return
 			}
 			tenantID = parsedTenantID

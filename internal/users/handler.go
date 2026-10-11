@@ -363,13 +363,13 @@ func (h *UserHandler) SoftDeleteUserAsAdmin(w http.ResponseWriter, r *http.Reque
 func (h *UserHandler) ChangeUserTenant(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", "invalid user id")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", "id do usuário inválido")
 		return
 	}
 
 	var dto domain.ChangeUserTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "corpo da requisição inválido")
 		return
 	}
 
@@ -385,7 +385,7 @@ func (h *UserHandler) ChangeUserTenant(w http.ResponseWriter, r *http.Request) {
 		case strings.Contains(err.Error(), "obrigatórios"), strings.Contains(err.Error(), "já pertence"):
 			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		default:
-			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to change user tenant")
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "falha ao alterar tenant do usuário")
 		}
 		return
 	}
