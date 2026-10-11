@@ -1,6 +1,6 @@
 # Go Start Project 🚀
 
-Boilerplate de API RESTful de alta performance em **Go**, estruturado sob os princípios de **Clean Architecture** e **Domain-Driven Design (DDD)**. Conta com autenticação JWT, rotação de refresh tokens, controle de acesso baseado em papéis e permissões granulares (RBAC), Value Objects com validação de domínio nativa, rate limiting contra força bruta, mensageria interna assíncrona (Worker Pool) e auditoria de requisições mutativas.
+Boilerplate de API RESTful de alta performance em **Go**, estruturado sob os princípios de **Clean Architecture** e **Domain-Driven Design (DDD)**. Conta com autenticação JWT, rotação de refresh tokens, controle de acesso baseado em papéis e permissões granulares (RBAC), Value Objects com validação de domínio nativa, rate limiting contra força bruta, mensageria interna assíncrona (Worker Pool), auditoria de requisições mutativas e respostas de erro uniformes fortemente tipadas.
 
 > 🎯 **Filosofia:** Pragmático, robusto e livre de dependências externas desnecessárias. Concorrência nativa de Go para tarefas em background, arquitetura orientada a contextos de domínio e tipagem estrita com foco em produção.
 
@@ -10,6 +10,7 @@ Boilerplate de API RESTful de alta performance em **Go**, estruturado sob os pri
 
 - [Tecnologias Utilizadas](#️-tecnologias-utilizadas)
 - [Arquitetura & Diferenciais de Engenharia](#-arquitetura--diferenciais-de-engenharia)
+- [Padrão de Respostas e Tratamento de Erros](#-padrão-de-respostas-e-tratamento-de-erros)
 - [Guia Rápido: Iniciando o Projeto do Zero](#-guia-rápido-iniciando-o-projeto-do-zero)
 - [Estrutura do Diretório](#-estrutura-do-diretório)
 - [Variáveis de Ambiente (.env)](#️-variáveis-de-ambiente-env)
@@ -33,6 +34,7 @@ Boilerplate de API RESTful de alta performance em **Go**, estruturado sob os pri
 | **Tráfego & Defesa** | Rate Limiting por conexão TCP (`go-chi/httprate`) imune a spoofing |
 | **Concorrência** | Goroutines, Channels bufferizados e `sync.WaitGroup` |
 | **Criptografia** | Bcrypt + SHA-256 + Tokens criptograficamente seguros (`crypto/rand`) |
+| **Validação** | Validator v10 (`go-playground/validator/v10`) com tradução amigável |
 | **Hot Reload** | Air (`.air.toml`) com Graceful Shutdown integrado |
 | **Documentação** | Swagger (`swaggo/swag`, `swaggo/http-swagger/v2`) |
 | **Containerização** | Docker & Docker Compose |
@@ -49,10 +51,9 @@ HTTP Request → Middleware (RateLimit, JWT, Audit) → Handler → Service → 
                                                      Channel Buffer (100)
                                                                 ↓
                                                     Worker Pool (3 Goroutines)
-
 ```
 
-* **Propagação de `context.Context**`: Cancelamento instantâneo de queries e conexões I/O caso a chamada HTTP seja abortada pelo cliente.
+* **Propagação de `context.Context`**: Cancelamento instantâneo de queries e conexões I/O caso a chamada HTTP seja abortada pelo cliente.
 * **Worker Pool Assíncrono (`pkg/mailer`)**: Fila de envio de e-mails interna com canal bufferizado (backpressure) e 3 workers em background. Dispensa brokers externos para envio de e-mails transacionais.
 * **Graceful Shutdown**: Interceptação de sinais `SIGINT`/`SIGTERM`. Aguarda a finalização dos workers e encerra o socket HTTP sem quebrar pacotes ou travar portas no SO.
 * **Value Objects com Validação Rica (`pkg/domain`)**: `Email` e `Password` encapsulam validação, normalização e hashing antes de tocar a camada de dados.
@@ -60,6 +61,47 @@ HTTP Request → Middleware (RateLimit, JWT, Audit) → Handler → Service → 
 * **Prevenção de Account Enumeration**: Rotas públicas de recuperação de senha e cadastro respondem de forma indistinguível para e-mails inexistentes.
 * **Multi-tenancy**: Cada usuário pertence a um único tenant. Usuários, roles, refresh tokens e auditoria carregam `tenant_id`; o escopo é aplicado nas queries pelo contexto do JWT, e o `TenantID` também é registrado nos logs de auditoria.
 * **Usuários pendentes**: O cadastro pode ser persistido antes da confirmação do e-mail. O campo `email_verified` representa esse estado sem criar um segundo tipo de usuário.
+
+---
+
+## 🚦 Padrão de Respostas e Tratamento de Erros
+
+Todas as respostas da aplicação são centralizadas em `internal/platform/response.go`, garantindo contratos previsíveis para clientes HTTP:
+
+### 1. Tipagem Forte (`platform.ErrorCode`)
+Os códigos de erro são declarados sob o tipo `platform.ErrorCode`, evitando literais soltos no código. Exemplos:
+* `CodeInternalError` (`"INTERNAL_ERROR"`)
+* `CodeValidationFailed` (`"VALIDATION_FAILED"`)
+* `CodeInvalidRequestBody` (`"INVALID_REQUEST_BODY"`)
+* `CodeUnauthorized` (`"UNAUTHORIZED"`)
+* `CodeForbidden` (`"FORBIDDEN"`)
+* `CodeNotFound` (`"NOT_FOUND"`)
+* `CodeConflict` (`"CONFLICT"`)
+* `CodeTooManyRequests` (`"TOO_MANY_REQUESTS"`)
+
+### 2. Estrutura Bilíngue Padronizada
+* **Propriedades JSON e Códigos:** Estritamente em **Inglês** (`message`, `code`, `details`).
+* **Mensagens para o Usuário Final:** Formatadas em **Português**, fornecendo instruções claras e amigáveis.
+
+#### Resposta de Erro Padrão:
+```json
+{
+  "message": "E-mail ou senha inválidos",
+  "code": "INVALID_CREDENTIALS"
+}
+```
+
+#### Resposta de Validação de Campos (`422 Unprocessable Entity`):
+```json
+{
+  "message": "Dados fornecidos são inválidos",
+  "code": "VALIDATION_FAILED",
+  "details": {
+    "email": "Formato de e-mail inválido",
+    "password": "Deve ter no mínimo 8 caracteres"
+  }
+}
+```
 
 ---
 
@@ -78,12 +120,11 @@ Se você acabou de clonar este repositório em uma nova máquina, siga este rote
 ### 2. Clonar e Instalar Dependências
 
 ```bash
-git clone [https://github.com/seu-usuario/go-start-project.git](https://github.com/seu-usuario/go-start-project.git)
+git clone https://github.com/seu-usuario/go-start-project.git
 cd go-start-project
 
 # Baixa as dependências e sincroniza o go.mod
 go mod tidy
-
 ```
 
 ### 3. Configurar o Ambiente (.env)
@@ -92,7 +133,6 @@ Copie o exemplo de variáveis de ambiente:
 
 ```bash
 cp .env.example .env
-
 ```
 
 *(Edite o `.env` caso precise alterar portas ou credenciais de banco).*
@@ -103,7 +143,6 @@ Inicie a instância do PostgreSQL:
 
 ```bash
 docker compose up -d postgres
-
 ```
 
 ### 5. Executar as Migrations
@@ -114,7 +153,6 @@ Aplique todas as tabelas e índices no PostgreSQL:
 make migrate-up
 # Ou via CLI nativa do migrate:
 # migrate -path migrations -database "postgres://postgres:postgres@localhost:5432/gostartdb?sslmode=disable" up
-
 ```
 
 ### 6. Executar o Servidor
@@ -125,7 +163,6 @@ make migrate-up
 air
 # ou
 make dev
-
 ```
 
 **Modo Padrão (compilação direta):**
@@ -134,7 +171,6 @@ make dev
 go run cmd/api/main.go
 # ou
 make run
-
 ```
 
 A API estará acessível em: **http://localhost:8000**
@@ -160,16 +196,16 @@ Swagger interativo em: **http://localhost:8000/swagger/index.html**
 │   │   ├── domain/                    # DTOs, Tokens e modelos de sessão
 │   │   ├── errors.go                  # Sentinel errors de autenticação
 │   │   ├── handler.go                 # Handlers (Login, Forgot, Reset, Change)
-│   │   ├── middleware.go              # Middleware de autorização JWT
+│   │   ├── middleware.go              # Middleware de autorização JWT e TenantContext
 │   │   ├── repository.go              # Persistência de Refresh Tokens
 │   │   └── service.go                 # Regras de negócio de credenciais
 │   ├── config/
 │   │   └── config.go                  # Parser de variáveis de ambiente
-│   ├── platform/
+│   ├── platform/                      # Utilitários transversais de infraestrutura
 │   │   ├── database/
 │   │   │   └── db.go                  # Conexão GORM e pooling PostgreSQL
 │   │   ├── ratelimit.go               # Limitador de tráfego seguro contra spoofing
-│   │   └── response.go                # Utilitários de resposta JSON uniforme
+│   │   └── response.go                # Central de respostas HTTP (JSON, ErrorCode, 422)
 │   ├── roles/                         # RBAC (Perfis e Permissões Granulares)
 │   │   ├── domain/                    # Entidades RoleEntity e Permission
 │   │   ├── errors.go                  # Erros de domínio para roles
@@ -185,21 +221,20 @@ Swagger interativo em: **http://localhost:8000/swagger/index.html**
 │   │   └── service.go                 # Validação e regras de tenant
 │   └── users/                         # Gestão de Usuários
 │       ├── domain/                    # Entidade User com hooks de validação GORM
-│       ├── handler.go                 # Rotas /me e administrativas
+│       ├── handler.go                 # Rotas /me, transferência de tenant e administrativas
 │       ├── repository.go              # Queries e Soft Delete
 │       ├── seed.go                    # Seed idempotente do Administrador inicial
 │       └── service.go                 # Regras de atualização e regras de usuário
 ├── migrations/                        # Arquivos SQL Up/Down ordenados
 ├── pkg/
-│   ├── apiresponse/                   # Schemas uniformes de retorno da API
 │   ├── domain/                        # Value Objects (Email, Password)
 │   ├── mailer/                        # Worker Pool assíncrono para e-mails
+│   ├── pagination/                    # Estruturas e extração de paginação
 │   └── token/                         # Emissor e validador de JWT Custom Claims
 ├── docs/                              # Arquivos gerados do Swagger
 ├── .air.toml                          # Configuração afinada para compilação local
 ├── Makefile                           # Comandos rápidos de compilação e migração
 └── README.md
-
 ```
 
 ---
@@ -223,7 +258,6 @@ JWT_EXPIRATION_HOURS=24
 ADMIN_DEFAULT_NAME=Super Admin
 ADMIN_DEFAULT_EMAIL=admin@admin.com
 ADMIN_DEFAULT_PASSWORD=Admin@123456
-
 ```
 
 ---
@@ -246,7 +280,6 @@ Comandos:
 ```bash
 make migrate-up      # Roda todas as migrações para a versão mais recente
 make migrate-down    # Reverte a última migração aplicada
-
 ```
 
 ---
@@ -351,7 +384,6 @@ Annotations do Swagger são declaradas diretamente sobre os handlers HTTP. Para 
 make swag
 # ou diretamente via swag CLI:
 swag init -g cmd/api/main.go
-
 ```
 
 Com o servidor em execução, acesse a interface interativa em:
@@ -362,5 +394,3 @@ Com o servidor em execução, acesse a interface interativa em:
 ## 📄 Licença
 
 Distribuído sob a licença **MIT**. Consulte o arquivo `LICENSE` para mais detalhes.
-
-```

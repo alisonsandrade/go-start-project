@@ -24,6 +24,7 @@ const (
 	CodeNotFound            ErrorCode = "NOT_FOUND"
 	CodeConflict            ErrorCode = "CONFLICT"
 	CodeBadRequest          ErrorCode = "BAD_REQUEST"
+	CodeTooManyRequests     ErrorCode = "TOO_MANY_REQUESTS"
 	CodeInvalidUUID         ErrorCode = "INVALID_UUID"
 	CodeInvalidToken        ErrorCode = "INVALID_TOKEN"
 	CodeInvalidTokenFormat  ErrorCode = "INVALID_TOKEN_FORMAT"

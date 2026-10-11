@@ -22,7 +22,7 @@ func RateLimiter(requestLimit int, windowLength time.Duration) func(http.Handler
 			return host, nil
 		}),
 		httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {
-			ErrorJSON(w, http.StatusTooManyRequests, "muitas tentativas. Tente novamente mais tarde.")
+			ErrorWithCodeJSON(w, http.StatusTooManyRequests, CodeTooManyRequests, "muitas tentativas. Tente novamente mais tarde.")
 		}),
 	)
 
