@@ -28,3 +28,4 @@ tmp/coverage.html
 *.out
 coverage.html
 tmp/
+.aider*

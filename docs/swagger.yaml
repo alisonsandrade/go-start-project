@@ -1,8 +1,15 @@
 definitions:
   apiresponse.ErrorResponse:
     properties:
-      error:
-        example: invalid credentials
+      code:
+        example: VALIDATION_FAILED
+        type: string
+      details:
+        additionalProperties:
+          type: string
+        type: object
+      message:
+        example: mensagem de erro
         type: string
     type: object
   apiresponse.MessageResponse:
@@ -99,6 +106,9 @@ definitions:
         type: string
       password:
         type: string
+    required:
+    - email
+    - password
     type: object
   domain.Permission:
     properties:
@@ -119,28 +129,39 @@ definitions:
     properties:
       avatar_url:
         example: https://github.com/antonio.silva/avatar.jpg
+        maxLength: 255
         type: string
       bio:
         example: Minha bio
+        maxLength: 255
         type: string
       email:
         example: antonio.silva@email.com
         type: string
       job_title:
         example: Desenvolvedor Backend Go
+        maxLength: 100
         type: string
       name:
         example: Antônio Silva
+        maxLength: 100
+        minLength: 3
         type: string
       password:
         example: senha123!
+        minLength: 8
         type: string
       phone:
         example: "75988094321"
+        maxLength: 20
         type: string
       role_id:
         example: 216aaf06-34b6-3d26-8866-ad2f94babeea
         type: string
+    required:
+    - email
+    - name
+    - password
     type: object
   domain.ReplacePermissionsRequest:
     properties:
@@ -241,6 +262,7 @@ definitions:
   domain.User:
     properties:
       avatar_url:
+        maxLength: 255
         type: string
       bio:
         type: string
@@ -251,16 +273,23 @@ definitions:
       is_active:
         type: boolean
       job_title:
+        maxLength: 100
         type: string
       name:
+        maxLength: 100
+        minLength: 3
         type: string
       phone:
+        maxLength: 20
         type: string
       role:
         type: object
       role_id:
         format: uuid
         type: string
+    required:
+    - name
+    - role_id
     type: object
   domain.UserPageResponse:
     properties:
@@ -336,6 +365,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -367,6 +400,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       summary: Request password reset
       tags:
       - Auth
@@ -396,6 +433,10 @@ paths:
             $ref: '#/definitions/apiresponse.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
@@ -456,6 +497,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
       summary: Refresh session (tokens)
       tags:
       - Auth
@@ -487,6 +532,10 @@ paths:
           description: Conflict
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -514,6 +563,10 @@ paths:
             $ref: '#/definitions/apiresponse.MessageResponse'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
       summary: Reset password
@@ -1022,6 +1075,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1047,6 +1104,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/apiresponse.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1079,6 +1140,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1125,6 +1190,10 @@ paths:
             $ref: '#/definitions/apiresponse.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":
@@ -1257,6 +1326,10 @@ paths:
             $ref: '#/definitions/apiresponse.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/apiresponse.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/apiresponse.ErrorResponse'
         "500":

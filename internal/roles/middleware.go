@@ -7,6 +7,8 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/auth"
 	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
+
+	"github.com/alisonsandrade/go-start-project/internal/platform"
 )
 
 // RequirePermission ensures the authenticated user's role grants the given permission
@@ -18,18 +20,18 @@ func RequirePermission(
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, ok := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 			if !ok || claims == nil {
-				http.Error(w, `{"error": unauthenticated user}`, http.StatusUnauthorized)
+				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, platform.CodeUnauthorized, "Usuário não autenticado")
 				return
 			}
 
 			hasPermission, err := roleRepo.RoleHasPermission(r.Context(), claims.RoleID, permission)
 			if err != nil {
-				http.Error(w, `{"error": "verified permission error"}`, http.StatusInternalServerError)
+				platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "Erro ao verificar a permissão")
 				return
 			}
 
 			if !hasPermission {
-				http.Error(w, `{"error": "unauthorized access: insufficient permission"}`, http.StatusForbidden)
+				platform.ErrorWithCodeJSON(w, 401, platform.CodeUnauthorized, "Permissão insuficiente")
 				return
 			}
 

@@ -63,6 +63,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -104,6 +110,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
                         "schema": {
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
@@ -150,6 +162,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
                         "schema": {
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
@@ -242,6 +260,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -289,6 +313,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -330,6 +360,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
                         "schema": {
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
@@ -1129,6 +1165,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1227,6 +1269,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1308,6 +1356,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.User"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
@@ -1382,6 +1436,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1418,6 +1478,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apiresponse.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apiresponse.ErrorResponse"
                         }
                     },
                     "401": {
@@ -1513,9 +1579,19 @@ const docTemplate = `{
         "apiresponse.ErrorResponse": {
             "type": "object",
             "properties": {
-                "error": {
+                "code": {
                     "type": "string",
-                    "example": "invalid credentials"
+                    "example": "VALIDATION_FAILED"
+                },
+                "details": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "mensagem de erro"
                 }
             }
         },
@@ -1651,6 +1727,10 @@ const docTemplate = `{
         },
         "domain.LoginRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -1685,13 +1765,20 @@ const docTemplate = `{
         },
         "domain.RegisterRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password"
+            ],
             "properties": {
                 "avatar_url": {
                     "type": "string",
+                    "maxLength": 255,
                     "example": "https://github.com/antonio.silva/avatar.jpg"
                 },
                 "bio": {
                     "type": "string",
+                    "maxLength": 255,
                     "example": "Minha bio"
                 },
                 "email": {
@@ -1700,18 +1787,23 @@ const docTemplate = `{
                 },
                 "job_title": {
                     "type": "string",
+                    "maxLength": 100,
                     "example": "Desenvolvedor Backend Go"
                 },
                 "name": {
                     "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3,
                     "example": "Antônio Silva"
                 },
                 "password": {
                     "type": "string",
+                    "minLength": 8,
                     "example": "senha123!"
                 },
                 "phone": {
                     "type": "string",
+                    "maxLength": 20,
                     "example": "75988094321"
                 },
                 "role_id": {
@@ -1866,9 +1958,14 @@ const docTemplate = `{
         },
         "domain.User": {
             "type": "object",
+            "required": [
+                "name",
+                "role_id"
+            ],
             "properties": {
                 "avatar_url": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "bio": {
                     "type": "string"
@@ -1883,13 +1980,17 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "job_title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3
                 },
                 "phone": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 20
                 },
                 "role": {
                     "type": "object"

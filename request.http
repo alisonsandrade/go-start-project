@@ -1,7 +1,7 @@
 ### ====================================================================
 ### Configurações de Variáveis
 ### ====================================================================
-@baseUrl = http://localhost:8000
+@baseUrl = http://localhost:8000/api
 @contentType = application/json
 
 # Variáveis globais para armazenar tokens e IDs durante os testes
