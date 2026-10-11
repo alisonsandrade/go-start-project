@@ -26,14 +26,14 @@ func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "cabeçalho de autorização ausente")
+				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, platform.CodeUnauthorized, "cabeçalho de autorização ausente")
 				return
 			}
 
 			// Extração do token
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || parts[0] != "Bearer" {
-				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "INVALID_TOKEN_FORMAT", "formato de token inválido. Use Bearer <token>")
+				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, platform.CodeInvalidTokenFormat, "formato de token inválido. Use Bearer <token>")
 				return
 			}
 
@@ -42,7 +42,7 @@ func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 			// Validação do token
 			claims, err := token.ValidateToken(tokenString, cfg.JWTSecret)
 			if err != nil {
-				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "INVALID_TOKEN", "token inválido ou expirado")
+				platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, platform.CodeInvalidToken, "token inválido ou expirado")
 				return
 			}
 
@@ -59,7 +59,7 @@ func TenantContextMiddleware(next http.Handler) http.Handler {
 		if rawTenantID := r.Header.Get("X-Tenant-ID"); rawTenantID != "" {
 			parsedTenantID, err := uuid.Parse(rawTenantID)
 			if err != nil || parsedTenantID == uuid.Nil {
-				platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_TENANT_ID", "tenant_id inválido")
+				platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidTenantID, "tenant_id inválido")
 				return
 			}
 			tenantID = parsedTenantID

@@ -11,7 +11,6 @@ import (
 	domainBase "github.com/alisonsandrade/go-start-project/internal/domain"
 	"github.com/alisonsandrade/go-start-project/internal/platform"
 	"github.com/alisonsandrade/go-start-project/internal/roles/domain"
-	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
 	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -39,16 +38,16 @@ func NewRoleHandler(roleService RoleService) *RoleHandler {
 // @Param        page  query    int  false  "Número da página (padrão: 1)"
 // @Param        limit query    int  false  "Itens por página (padrão: 10, máx: 50)"
 // @Success      200   {object} domain.RolePageResponse
-// @Failure      401   {object} apiresponse.ErrorResponse
-// @Failure      403   {object} apiresponse.ErrorResponse
-// @Failure      500   {object} apiresponse.ErrorResponse
+// @Failure      401   {object} platform.ErrorResponse
+// @Failure      403   {object} platform.ErrorResponse
+// @Failure      500   {object} platform.ErrorResponse
 // @Router       /api/roles [get]
 func (h *RoleHandler) ListRoles(w http.ResponseWriter, r *http.Request) {
 	params := pagination.ExtractParams(r, 10, 50)
 
 	roles, err := h.roleService.List(r.Context(), params)
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusInternalServerError, "erro ao listar perfis")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "erro ao listar perfis")
 		return
 	}
 
@@ -63,25 +62,25 @@ func (h *RoleHandler) ListRoles(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        id path string true "Role ID"
 // @Success      200  {object}  domain.RoleEntity
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/roles/{id} [get]
 func (h *RoleHandler) GetRoleByID(w http.ResponseWriter, r *http.Request) {
 	roleID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid role id")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, "id do perfil inválido")
 		return
 	}
 
 	role, err := h.roleService.GetByID(r.Context(), roleID)
 	if err != nil {
 		if errors.Is(err, ErrRoleNotFound) {
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeRoleNotFound, err.Error())
 			return
 		}
 
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		return
 	}
 
@@ -97,15 +96,15 @@ func (h *RoleHandler) GetRoleByID(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        payload body domain.CreateRoleRequest true "Role payload"
 // @Success      201  {object}  domain.RoleEntity
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      409  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      409  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/roles [post]
 func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateRoleRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, "corpo da requisição inválido")
 		return
 	}
 
@@ -122,11 +121,11 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 	createdRole, err := h.roleService.Create(r.Context(), role)
 	if err != nil {
 		if errors.Is(err, ErrRoleAlreadyExists) {
-			platform.ErrorJSON(w, http.StatusConflict, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, platform.CodeRoleAlreadyExists, err.Error())
 			return
 		}
 
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		return
 	}
 
@@ -143,22 +142,22 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 // @Param        id path string true "Role ID"
 // @Param        payload body domain.UpdateRoleRequest true "Role payload"
 // @Success      200  {object}  domain.RoleEntity
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      409  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      409  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/roles/{id} [put]
 func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	roleID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid role id")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, "id do perfil inválido")
 		return
 	}
 
 	var req domain.UpdateRoleRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, "corpo da requisição inválido")
 		return
 	}
 
@@ -180,16 +179,16 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	updatedRole, err := h.roleService.Update(r.Context(), role)
 	if err != nil {
 		if errors.Is(err, ErrRoleNotFound) {
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeRoleNotFound, err.Error())
 			return
 		}
 
 		if errors.Is(err, ErrSystemRoleImmutable) {
-			platform.ErrorJSON(w, http.StatusConflict, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, platform.CodeSystemRoleImmutable, err.Error())
 			return
 		}
 
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		return
 	}
 
@@ -203,37 +202,37 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Produce      json
 // @Param        id path string true "Role ID"
-// @Success      200  {object}  apiresponse.MessageResponse
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      409  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Success      200  {object}  platform.MessageResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      409  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/roles/{id} [delete]
 func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	roleID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid role id")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, "id do perfil inválido")
 		return
 	}
 
 	err = h.roleService.Delete(r.Context(), roleID)
 	if err != nil {
 		if errors.Is(err, ErrRoleNotFound) {
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeRoleNotFound, err.Error())
 			return
 		}
 
 		if errors.Is(err, ErrSystemRoleImmutable) {
-			platform.ErrorJSON(w, http.StatusConflict, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, platform.CodeSystemRoleImmutable, err.Error())
 			return
 		}
 
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		return
 	}
 
-	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
-		Message: "Role deleted successfully",
+	platform.JSON(w, http.StatusOK, platform.MessageResponse{
+		Message: "Perfil removido com sucesso",
 	})
 }
 
@@ -246,23 +245,23 @@ func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        id path string true "Role ID"
 // @Param        payload body domain.ReplacePermissionsRequest true "Permission IDs"
-// @Success      200  {object}  apiresponse.MessageResponse
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      409  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Success      200  {object}  platform.MessageResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      409  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/roles/{id}/permissions [put]
 func (h *RoleHandler) ReplacePermissions(w http.ResponseWriter, r *http.Request) {
 	roleID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid role id")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, "id do perfil inválido")
 		return
 	}
 
 	var req domain.ReplacePermissionsRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		platform.ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, "corpo da requisição inválido")
 		return
 	}
 
@@ -278,26 +277,26 @@ func (h *RoleHandler) ReplacePermissions(w http.ResponseWriter, r *http.Request)
 	)
 	if err != nil {
 		if errors.Is(err, ErrRoleNotFound) {
-			platform.ErrorJSON(w, http.StatusNotFound, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeRoleNotFound, err.Error())
 			return
 		}
 
 		if errors.Is(err, ErrInvalidPermissions) {
-			platform.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidPermissions, err.Error())
 			return
 		}
 
 		if errors.Is(err, ErrSystemRoleImmutable) {
-			platform.ErrorJSON(w, http.StatusConflict, err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, platform.CodeSystemRoleImmutable, err.Error())
 			return
 		}
 
-		platform.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		return
 	}
 
-	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
-		Message: "Role permissions updated successfully",
+	platform.JSON(w, http.StatusOK, platform.MessageResponse{
+		Message: "Permissões do perfil atualizadas com sucesso",
 	})
 }
 

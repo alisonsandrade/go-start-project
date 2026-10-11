@@ -12,7 +12,6 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/roles"
 	rolesDomain "github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/internal/tenants/domain"
-	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
 	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
 	"github.com/go-chi/chi/v5"
@@ -41,14 +40,14 @@ func NewHandler(service Service) *Handler {
 // @Produce      json
 // @Param        payload body domain.CreateTenantRequest true "Tenant data"
 // @Success      201  {object} domain.Tenant
-// @Failure      400  {object} apiresponse.ErrorResponse
-// @Failure      409  {object} apiresponse.ErrorResponse
-// @Failure      500  {object} apiresponse.ErrorResponse
+// @Failure      400  {object} platform.ErrorResponse
+// @Failure      409  {object} platform.ErrorResponse
+// @Failure      500  {object} platform.ErrorResponse
 // @Router       /api/tenants [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var request domain.CreateTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "corpo da requisição inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, "corpo da requisição inválido")
 		return
 	}
 
@@ -61,11 +60,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrNameRequired), errors.Is(err, domain.ErrDocumentRequired), errors.Is(err, domain.ErrDocumentInvalid), errors.Is(err, domain.ErrSettingsInvalid):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_TENANT_DATA", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidTenantData, err.Error())
 		case errors.Is(err, ErrAlreadyExists):
-			platform.ErrorWithCodeJSON(w, http.StatusConflict, "TENANT_ALREADY_EXISTS", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, platform.CodeTenantAlreadyExists, err.Error())
 		default:
-			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "falha ao criar tenant")
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "falha ao criar tenant")
 		}
 		return
 	}
@@ -80,24 +79,24 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        id path string true "Tenant ID"
 // @Success      200  {object} domain.Tenant
-// @Failure      400  {object} apiresponse.ErrorResponse
-// @Failure      404  {object} apiresponse.ErrorResponse
-// @Failure      500  {object} apiresponse.ErrorResponse
+// @Failure      400  {object} platform.ErrorResponse
+// @Failure      404  {object} platform.ErrorResponse
+// @Failure      500  {object} platform.ErrorResponse
 // @Router       /api/tenants/{id} [get]
 func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", "id do tenant inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, "id do tenant inválido")
 		return
 	}
 
 	tenant, err := h.service.FindByID(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "TENANT_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeTenantNotFound, err.Error())
 			return
 		}
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "falha ao buscar tenant")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "falha ao buscar tenant")
 		return
 	}
 	platform.JSON(w, http.StatusOK, tenant)
@@ -110,24 +109,24 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Produce      json
 // @Success      200  {object} domain.Tenant
-// @Failure      401  {object} apiresponse.ErrorResponse
-// @Failure      404  {object} apiresponse.ErrorResponse
-// @Failure      500  {object} apiresponse.ErrorResponse
+// @Failure      401  {object} platform.ErrorResponse
+// @Failure      404  {object} platform.ErrorResponse
+// @Failure      500  {object} platform.ErrorResponse
 // @Router       /api/tenants/me [get]
 func (h *Handler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 	if !ok || claims == nil || claims.TenantID == uuid.Nil {
-		platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "não autenticado")
+		platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, platform.CodeUnauthorized, "não autenticado")
 		return
 	}
 
 	tenant, err := h.service.FindByID(r.Context(), claims.TenantID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "TENANT_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeTenantNotFound, err.Error())
 			return
 		}
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "falha ao buscar tenant")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "falha ao buscar tenant")
 		return
 	}
 	platform.JSON(w, http.StatusOK, tenant)
@@ -142,14 +141,14 @@ func (h *Handler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 // @Param        page  query    int  false  "Page number"
 // @Param        limit query    int  false  "Items per page (default: 10, max: 100)"
 // @Success      200  {object} domain.TenantPageResponse
-// @Failure      401  {object} apiresponse.ErrorResponse
-// @Failure      500  {object} apiresponse.ErrorResponse
+// @Failure      401  {object} platform.ErrorResponse
+// @Failure      500  {object} platform.ErrorResponse
 // @Router       /api/tenants [get]
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	params := pagination.ExtractParams(r, 10, 100)
 	result, err := h.service.List(r.Context(), params)
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "falha ao listar tenants")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "falha ao listar tenants")
 		return
 	}
 	platform.JSON(w, http.StatusOK, result)
@@ -165,22 +164,22 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 // @Param        id path string true "Tenant ID"
 // @Param        payload body domain.UpdateTenantRequest true "Tenant data"
 // @Success      200  {object} domain.Tenant
-// @Failure      400  {object} apiresponse.ErrorResponse
-// @Failure      401  {object} apiresponse.ErrorResponse
-// @Failure      404  {object} apiresponse.ErrorResponse
-// @Failure      409  {object} apiresponse.ErrorResponse
-// @Failure      500  {object} apiresponse.ErrorResponse
+// @Failure      400  {object} platform.ErrorResponse
+// @Failure      401  {object} platform.ErrorResponse
+// @Failure      404  {object} platform.ErrorResponse
+// @Failure      409  {object} platform.ErrorResponse
+// @Failure      500  {object} platform.ErrorResponse
 // @Router       /api/tenants/{id} [put]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", "id do tenant inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, "id do tenant inválido")
 		return
 	}
 
 	var request domain.UpdateTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "corpo da requisição inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, "corpo da requisição inválido")
 		return
 	}
 
@@ -193,13 +192,13 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "TENANT_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeTenantNotFound, err.Error())
 		case errors.Is(err, ErrAlreadyExists):
-			platform.ErrorWithCodeJSON(w, http.StatusConflict, "TENANT_ALREADY_EXISTS", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, platform.CodeTenantAlreadyExists, err.Error())
 		case errors.Is(err, domain.ErrNameRequired), errors.Is(err, domain.ErrDocumentRequired), errors.Is(err, domain.ErrDocumentInvalid), errors.Is(err, domain.ErrSettingsInvalid):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_TENANT_DATA", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidTenantData, err.Error())
 		default:
-			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "falha ao atualizar tenant")
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "falha ao atualizar tenant")
 		}
 		return
 	}
@@ -213,28 +212,28 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Produce      json
 // @Param        id path string true "Tenant ID"
-// @Success      200  {object} apiresponse.MessageResponse
-// @Failure      401  {object} apiresponse.ErrorResponse
-// @Failure      403  {object} apiresponse.ErrorResponse
-// @Failure      404  {object} apiresponse.ErrorResponse
-// @Failure      500  {object} apiresponse.ErrorResponse
+// @Success      200  {object} platform.MessageResponse
+// @Failure      401  {object} platform.ErrorResponse
+// @Failure      403  {object} platform.ErrorResponse
+// @Failure      404  {object} platform.ErrorResponse
+// @Failure      500  {object} platform.ErrorResponse
 // @Router       /api/tenants/{id} [delete]
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", "id do tenant inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, "id do tenant inválido")
 		return
 	}
 
 	if err := h.service.Delete(r.Context(), id); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "TENANT_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeTenantNotFound, err.Error())
 			return
 		}
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "falha ao excluir tenant")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "falha ao excluir tenant")
 		return
 	}
-	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
+	platform.JSON(w, http.StatusOK, platform.MessageResponse{
 		Message: "Tenant excluído com sucesso",
 	})
 }

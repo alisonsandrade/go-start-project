@@ -13,7 +13,6 @@ import (
 	"github.com/alisonsandrade/go-start-project/internal/roles"
 	rolesDomain "github.com/alisonsandrade/go-start-project/internal/roles/domain"
 	"github.com/alisonsandrade/go-start-project/internal/users/domain"
-	"github.com/alisonsandrade/go-start-project/pkg/apiresponse"
 	pkgDomain "github.com/alisonsandrade/go-start-project/pkg/domain"
 	"github.com/alisonsandrade/go-start-project/pkg/pagination"
 	"github.com/alisonsandrade/go-start-project/pkg/token"
@@ -42,9 +41,9 @@ func NewUserHandler(userService UserService) *UserHandler {
 // @Security     BearerAuth
 // @Produce      json
 // @Success      200  {object}  domain.User
-// @Failure      401  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Failure      401  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/users/me [get]
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	claims := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
@@ -52,10 +51,10 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.userService.GetUser(r.Context(), claims.UserID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeUserNotFound, err.Error())
 			return
 		}
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		return
 	}
 
@@ -71,16 +70,16 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 // @Param        page  query    int  false  "Número da página (padrão: 1)"
 // @Param        limit query    int  false  "Itens por página (padrão: 10, máx: 100)"
 // @Success      200   {object} domain.UserPageResponse
-// @Failure      401   {object} apiresponse.ErrorResponse
-// @Failure      403   {object} apiresponse.ErrorResponse
-// @Failure      500   {object} apiresponse.ErrorResponse
+// @Failure      401   {object} platform.ErrorResponse
+// @Failure      403   {object} platform.ErrorResponse
+// @Failure      500   {object} platform.ErrorResponse
 // @Router       /api/users [get]
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	params := pagination.ExtractParams(r, 10, 100)
 
 	result, err := h.userService.ListUsers(r.Context(), params)
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "erro ao listar usuários")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "erro ao listar usuários")
 		return
 	}
 
@@ -96,21 +95,21 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        payload body domain.CreateUserRequest true "Campos para cadastrar novo usuário"
 // @Success      201  {object}  domain.UserResponse
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      401  {object}  apiresponse.ErrorResponse
-// @Failure      409  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      401  {object}  platform.ErrorResponse
+// @Failure      409  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/users [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 	if !ok || claims == nil {
-		platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "Não autorizado")
+		platform.ErrorWithCodeJSON(w, http.StatusUnauthorized, platform.CodeUnauthorized, "Não autorizado")
 		return
 	}
 
 	var dto domain.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, err.Error())
 		return
 	}
 
@@ -123,15 +122,15 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrForbidden):
-			platform.ErrorWithCodeJSON(w, http.StatusForbidden, "FORBIDDEN", "Acesso restrito para administradores")
+			platform.ErrorWithCodeJSON(w, http.StatusForbidden, platform.CodeForbidden, "Acesso restrito para administradores")
 		case errors.Is(err, ErrEmailAlreadyExists):
-			platform.ErrorWithCodeJSON(w, http.StatusConflict, "EMAIL_ALREADY_EXISTS", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusConflict, platform.CodeEmailAlreadyExists, err.Error())
 		case errors.Is(err, ErrInvalidRole):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_ROLE", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRole, err.Error())
 		case errors.Is(err, pkgDomain.ErrInvalidEmail):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_EMAIL", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidEmail, err.Error())
 		default:
-			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		}
 		return
 	}
@@ -148,17 +147,17 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        payload body domain.UpdateUserRequest true "Campos para atualização"
 // @Success      200  {object}  domain.User
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      401  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      401  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/users/me [put]
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	claims := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
 
 	var dto domain.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, "Corpo da requisição inválido")
 		return
 	}
 
@@ -171,15 +170,15 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrUserNotFound):
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeUserNotFound, err.Error())
 		case errors.Is(err, ErrForbidden):
-			platform.ErrorWithCodeJSON(w, http.StatusForbidden, "FORBIDDEN", "Acesso restrito para administradores")
+			platform.ErrorWithCodeJSON(w, http.StatusForbidden, platform.CodeForbidden, "Acesso restrito para administradores")
 		case errors.Is(err, ErrInvalidRole):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_ROLE", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRole, err.Error())
 		case errors.Is(err, pkgDomain.ErrInvalidEmail):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_EMAIL", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidEmail, err.Error())
 		default:
-			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		}
 		return
 	}
@@ -193,10 +192,10 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // @Tags         Users
 // @Security     BearerAuth
 // @Produce      json
-// @Success      200  {object}  apiresponse.MessageResponse
-// @Failure      401  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Success      200  {object}  platform.MessageResponse
+// @Failure      401  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/users/me [delete]
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	claims := r.Context().Value(auth.UserClaimsKey).(*token.CustomClaims)
@@ -204,14 +203,14 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	err := h.userService.DeleteUser(r.Context(), claims.UserID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeUserNotFound, err.Error())
 			return
 		}
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "erro interno ao deletar usuário")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "erro interno ao deletar usuário")
 		return
 	}
 
-	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
+	platform.JSON(w, http.StatusOK, platform.MessageResponse{
 		Message: "Usuário desativado com sucesso",
 	})
 }
@@ -228,27 +227,27 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        id path string true "User ID"
 // @Success      200  {object}  domain.User
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      401  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      401  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/users/{id} [get]
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 
 	idUUID, err := uuid.Parse(userID)
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, err.Error())
 		return
 	}
 
 	user, err := h.userService.GetUser(r.Context(), idUUID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeUserNotFound, err.Error())
 			return
 		}
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		return
 	}
 
@@ -265,22 +264,22 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 // @Param        id path string true "User ID"
 // @Param        payload body domain.UpdateUserRequest true "Fields for udpate"
 // @Success      200  {object}  domain.User
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      401  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      401  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/users/{id} [put]
 func (h *UserHandler) UpdateUserAsAdmin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	userUUID, err := uuid.Parse(id)
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", err.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, err.Error())
 		return
 	}
 
 	var dto domain.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "Corpo da requisição inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, "Corpo da requisição inválido")
 		return
 	}
 
@@ -293,15 +292,15 @@ func (h *UserHandler) UpdateUserAsAdmin(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrUserNotFound):
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeUserNotFound, err.Error())
 		case errors.Is(err, ErrForbidden):
-			platform.ErrorWithCodeJSON(w, http.StatusForbidden, "FORBIDDEN", "Acesso restrito para administradores")
+			platform.ErrorWithCodeJSON(w, http.StatusForbidden, platform.CodeForbidden, "Acesso restrito para administradores")
 		case errors.Is(err, ErrInvalidRole):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_ROLE", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRole, err.Error())
 		case errors.Is(err, pkgDomain.ErrInvalidEmail):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_EMAIL", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidEmail, err.Error())
 		default:
-			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, err.Error())
 		}
 		return
 	}
@@ -316,31 +315,31 @@ func (h *UserHandler) UpdateUserAsAdmin(w http.ResponseWriter, r *http.Request) 
 // @Security     BearerAuth
 // @Produce      json
 // @Param        id path string true "User ID"
-// @Success      200  {object}  apiresponse.MessageResponse
-// @Failure      400  {object}  apiresponse.ErrorResponse
-// @Failure      401  {object}  apiresponse.ErrorResponse
-// @Failure      404  {object}  apiresponse.ErrorResponse
-// @Failure      500  {object}  apiresponse.ErrorResponse
+// @Success      200  {object}  platform.MessageResponse
+// @Failure      400  {object}  platform.ErrorResponse
+// @Failure      401  {object}  platform.ErrorResponse
+// @Failure      404  {object}  platform.ErrorResponse
+// @Failure      500  {object}  platform.ErrorResponse
 // @Router       /api/users/{id} [delete]
 func (h *UserHandler) SoftDeleteUserAsAdmin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	userUUID, er := uuid.Parse(id)
 	if er != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", er.Error())
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, er.Error())
 		return
 	}
 
 	err := h.userService.SoftDeleteUserAsAdmin(r.Context(), userUUID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "USER_NOT_FOUND", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeUserNotFound, err.Error())
 			return
 		}
-		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "erro interno ao deletar usuário")
+		platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "erro interno ao deletar usuário")
 		return
 	}
 
-	platform.JSON(w, http.StatusOK, apiresponse.MessageResponse{
+	platform.JSON(w, http.StatusOK, platform.MessageResponse{
 		Message: "Usuário desativado com sucesso",
 	})
 }
@@ -355,21 +354,21 @@ func (h *UserHandler) SoftDeleteUserAsAdmin(w http.ResponseWriter, r *http.Reque
 // @Param        id path string true "User ID"
 // @Param        payload body domain.ChangeUserTenantRequest true "Tenant e role de destino"
 // @Success      204
-// @Failure      400 {object} apiresponse.ErrorResponse
-// @Failure      401 {object} apiresponse.ErrorResponse
-// @Failure      403 {object} apiresponse.ErrorResponse
-// @Failure      404 {object} apiresponse.ErrorResponse
+// @Failure      400 {object} platform.ErrorResponse
+// @Failure      401 {object} platform.ErrorResponse
+// @Failure      403 {object} platform.ErrorResponse
+// @Failure      404 {object} platform.ErrorResponse
 // @Router       /api/users/{id}/tenant [patch]
 func (h *UserHandler) ChangeUserTenant(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_UUID", "id do usuário inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidUUID, "id do usuário inválido")
 		return
 	}
 
 	var dto domain.ChangeUserTenantRequest
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "corpo da requisição inválido")
+		platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeInvalidRequestBody, "corpo da requisição inválido")
 		return
 	}
 
@@ -381,11 +380,11 @@ func (h *UserHandler) ChangeUserTenant(w http.ResponseWriter, r *http.Request) {
 	if err := h.userService.ChangeUserTenant(r.Context(), id, dto); err != nil {
 		switch {
 		case errors.Is(err, ErrUserNotFound), errors.Is(err, gorm.ErrRecordNotFound):
-			platform.ErrorWithCodeJSON(w, http.StatusNotFound, "NOT_FOUND", "usuário, tenant ou role não encontrado")
+			platform.ErrorWithCodeJSON(w, http.StatusNotFound, platform.CodeNotFound, "usuário, tenant ou role não encontrado")
 		case strings.Contains(err.Error(), "obrigatórios"), strings.Contains(err.Error(), "já pertence"):
-			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+			platform.ErrorWithCodeJSON(w, http.StatusBadRequest, platform.CodeBadRequest, err.Error())
 		default:
-			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "falha ao alterar tenant do usuário")
+			platform.ErrorWithCodeJSON(w, http.StatusInternalServerError, platform.CodeInternalError, "falha ao alterar tenant do usuário")
 		}
 		return
 	}

@@ -1,6 +1,2 @@
-// Package apiresponse for messages
+// Package apiresponse is deprecated. Types and errors have been migrated to internal/platform.
 package apiresponse
-
-type MessageResponse struct {
-	Message string `json:"message" example:"operation completed successfully"`
-}
